@@ -1,0 +1,7 @@
+C:\Users\hajek\source\repos\ChatUPD1\ChatUPD1\bin\Debug\ChatUPD1.exe.config
+C:\Users\hajek\source\repos\ChatUPD1\ChatUPD1\bin\Debug\ChatUPD1.exe
+C:\Users\hajek\source\repos\ChatUPD1\ChatUPD1\bin\Debug\ChatUPD1.pdb
+C:\Users\hajek\source\repos\ChatUPD1\ChatUPD1\obj\Debug\ChatUPD1.csproj.AssemblyReference.cache
+C:\Users\hajek\source\repos\ChatUPD1\ChatUPD1\obj\Debug\ChatUPD1.csproj.CoreCompileInputs.cache
+C:\Users\hajek\source\repos\ChatUPD1\ChatUPD1\obj\Debug\ChatUPD1.exe
+C:\Users\hajek\source\repos\ChatUPD1\ChatUPD1\obj\Debug\ChatUPD1.pdb
