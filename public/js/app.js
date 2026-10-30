@@ -1,11 +1,12 @@
 import { initTelegram, startParam, setMain, haptic } from './tg.js';
-import { $, $$, moveIndicator, applyLens, setRouteBack, closeSheet, sheetIsOpen, icon, errorHTML, toastError } from './ui.js';
+import { $, $$, moveIndicator, applyLens, setRouteBack, closeSheet, sheetIsOpen, openSheet, icon, errorHTML, toastError } from './ui.js';
 import { appUrl } from './api.js';
 import { store, subscribe, loadMe, toggleFavorite, toggleCompare } from './store.js';
 import home from './views/home.js';
 import catalog from './views/catalog.js';
 import service, { goToBot } from './views/service.js';
 import pick from './views/pick.js';
+import { adsFeed, adChannel, adDeals, adDeal, adMy, adEditor } from './views/ads.js';
 import compare from './views/compare.js';
 import favorites from './views/favorites.js';
 import { profile, myReviews, history as historyView, notifySettings } from './views/profile.js';
@@ -25,6 +26,7 @@ const routes = [
   ['/service/:id', service], ['/pick', pick], ['/top', topArchive], ['/top/:period', topArchive],
   ['/profile/reviews', myReviews], ['/profile/history', historyView], ['/profile/notify', notifySettings],
   ['/owner', ownerHome], ['/owner/apply', ownerApply], ['/owner/:id', ownerService],
+  ['/ads', adsFeed], ['/ads/deals', adDeals], ['/ads/deals/:id', adDeal], ['/ads/my', adMy], ['/ads/my/new', adEditor], ['/ads/my/:id', adEditor], ['/ads/:id', adChannel],
   ['/admin', toPanel], ['/admin/:section', toPanel]
 ].map(([pattern, view]) => {
   const keys = [];
@@ -41,7 +43,7 @@ function parseHash() {
 function tabFor(path) {
   if (ROOT_TABS.includes(path)) return path;
   if (path.startsWith('/top')) return '/';
-  if (/^\/(profile|owner|admin)/.test(path)) return '/profile';
+  if (/^\/(profile|owner|admin|ads)/.test(path)) return '/profile';
   return store.lastTab;
 }
 
@@ -50,6 +52,10 @@ function parentOf(path) {
   if (path.startsWith('/owner/')) return '/owner';
   if (path === '/owner' || path === '/admin' || path.startsWith('/profile/')) return '/profile';
   if (path.startsWith('/top/')) return '/top';
+  if (path.startsWith('/ads/deals/')) return '/ads/deals';
+  if (path.startsWith('/ads/my/')) return '/ads/my';
+  if (/^\/ads\/\d+$/.test(path)) return '/ads';
+  if (path.startsWith('/ads')) return '/profile';
   return store.lastTab;
 }
 
@@ -215,6 +221,10 @@ function routeFromStartParam(p) {
   if ((m = p.match(/^s_(\d+)$/))) return `/service/${m[1]}`;
   if ((m = p.match(/^owner_(\d+)$/))) return `/owner/${m[1]}`;
   if ((m = p.match(/^admin_([a-z]+)$/))) return `/admin/${m[1]}`;
+  if ((m = p.match(/^deal_(\d+)$/))) return `/ads/deals/${m[1]}`;
+  if ((m = p.match(/^ad_(\d+)$/))) return `/ads/${m[1]}`;
+  if (p === 'ads_my') return '/ads/my';
+  if (p === 'ads') return '/ads';
   if (['owner', 'top', 'profile', 'admin', 'catalog', 'compare', 'favorites', 'pick'].includes(p)) return `/${p}`;
   return null;
 }
@@ -223,11 +233,43 @@ initTelegram(() => $$('.seg').forEach((s) => moveIndicator(s, false)));
 updateCompareBadge();
 applyLens($('.tabbar'));
 await loadMe();
+// First launch: who are you? Asked once, only on a plain start of a fresh account; the role
+// can be changed later in the profile.
+function askRole() {
+  const me = store.me;
+  if (!me || me.roles.some((r) => r !== 'client') || me.counts?.history || me.counts?.reviews || me.counts?.ad_channels) return;
+  try {
+    if (localStorage.getItem('linza.role_asked')) return;
+    localStorage.setItem('linza.role_asked', '1');
+  } catch { return; }
+  const ROLES = [
+    ['client', 'Ищу VPN для себя', 'каталог, сравнение, отзывы'],
+    ['vpn_owner', 'У меня VPN-сервис', 'карточка в каталоге и реклама в каналах'],
+    ['ad_seller', 'Продаю рекламу в канале', 'заявки от владельцев VPN']
+  ];
+  openSheet('Кто вы?', `
+    <div class="pick-opts" style="margin-top:0">${ROLES.map(([id, name, hint]) => `
+      <button type="button" class="fill pick-opt press" data-role="${id}" style="flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;padding:10px 18px">
+        <span>${name}</span><span class="small muted" style="font-weight:400">${hint}</span></button>`).join('')}</div>
+    <p class="note center">Роль можно сменить в профиле.</p>`, (sheet) => {
+    sheet.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-role]');
+      if (!b) return;
+      haptic.impact('light');
+      closeSheet();
+      store.me.active_role = b.dataset.role;
+      if (b.dataset.role === 'vpn_owner') navigate('/owner/apply');
+      if (b.dataset.role === 'ad_seller') navigate('/ads/my/new');
+    });
+  });
+}
+
 const deep = routeFromStartParam(startParam);
 if (deep && !location.hash) {
   history.replaceState({ idx: 0 }, '', '#/');
   navigate(deep);
 } else {
   render(false);
+  if (!location.hash || location.hash === '#/') askRole();
 }
 requestAnimationFrame(() => moveIndicator($('.tabbar'), false));

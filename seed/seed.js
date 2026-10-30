@@ -7,7 +7,8 @@ import { openDb } from '../server/db.js';
 import { applyCard } from '../server/lib/moderation.js';
 import { recomputeMarketAverage } from '../server/lib/catalog.js';
 import { publishTop } from '../server/lib/top.js';
-import { grantRole } from '../server/auth.js';
+import { grantRole, loadUser } from '../server/auth.js';
+import { createChannel } from '../server/lib/ads.js';
 import { recordVote, recomputeStatus, evaluateTrust, openDispute } from '../server/lib/health.js';
 import { DAY, mskDay, now, periodOf, shiftPeriod, periodRange } from '../server/lib/time.js';
 
@@ -301,6 +302,76 @@ recent(lowSvc, 'up', [[35, 'wifi'], [12, 'megafon']]);
 // Recent "works" signals elsewhere, so cards show a fresh last-signal time.
 for (const s of published) if (![aurora, outageSvc.id, lowSvc].includes(s.id) && rnd() < 0.7) recent(s.id, 'up', [[between(20, 600), rnd() < 0.5 ? pick(NETS) : null]]);
 
+/* ---------------- Ad exchange ---------------- */
+// Demo channels (links under t.me/linza_demo_ch_*, wiped by «Удалить тестовые данные»), past deals
+// with buyers' reviews, and open deals for the dev user both as a buyer and as a seller.
+const CHANNELS = [
+  ['Бубсер | Бравл Старс', 'bubser', 'games', 195000, 22000, 29000, { '1/24': 6000, '2/48': 9000, pin: 15000 }, true, true, 0.9],
+  ['Мемы без контекста', 'memes_nc', 'humor', 340000, 61000, 78000, { '1/24': 9000, '1/48': 11000 }, true, false, 0.8],
+  ['APK Хаб', 'apkhub', 'apk', 88000, 14000, 19000, { '1/24': 3500, '2/48': 5000 }, false, true, 0.7],
+  ['Срочные новости 24', 'news24', 'news', 520000, 95000, 120000, { '1/24': 30000, pin: 55000 }, true, false, 0.6],
+  ['Кино на вечер', 'kino_vecher', 'movies', 150000, 18000, 24000, { '1/24': 5200, '1/48': 6500 }, false, false, 0.75],
+  ['Шок! Это реально', 'shock_real', 'shock', 410000, 70000, 92000, { '1/24': 12000, '2/48': 16000, pack: 40000 }, false, true, 0.5],
+  ['Техно без воды', 'tech_nowater', 'tech', 62000, 9000, 12500, { '1/24': 2700 }, true, true, 0.85],
+  ['Крипто сигналы', 'crypto_sig', 'crypto', 120000, 8000, 11000, { '1/24': 4500 }, false, false, 0.3],
+  ['Игровые новости', 'gamenews', 'games', 230000, 30000, 41000, { '1/24': 7000, '2/48': 10000, '1/48': 8500 }, true, true, 0.8],
+  ['Смешно до слёз', 'lol_tears', 'humor', 99000, 21000, 27000, { '1/24': 4200, pack: 15000 }, false, false, 0.65],
+  ['Музыка в машину', 'carmusic', 'music', 75000, 11000, 15000, { '1/24': 3000 }, false, true, 0.7],
+  ['Лайфхаки на каждый день', 'lifehacks', 'lifestyle', 180000, 26000, 33000, { '1/24': 6800, pin: 12000 }, true, false, 0.75]
+];
+const AD_TEXTS = ['Зашло отлично, аудитория живая', 'Охват честный, конверсия средняя', 'Пришло меньше, чем ждали, но оплаты были', 'Быстро согласовали, пост вышел вовремя', 'Аудитория молодая, триалы берут охотно'];
+const futureDates = (n) => sample(Array.from({ length: 30 }, (_, i) => mskDay(ts0 + (i + 1) * DAY)), n).sort();
+const vpnOwners = db.all("SELECT s.id service_id, s.owner_id FROM services s WHERE s.owner_id >= ? AND s.status = 'published'", FAKE_BASE);
+const adChannels = [];
+db.tx(() => {
+  CHANNELS.forEach(([title, slug, topic, subs, r24, r48, formats, verified, hadVpn, q], i) => {
+    const sellerId = FAKE_BASE + 30_000 + i;
+    db.run('INSERT OR IGNORE INTO users (id, username, first_name, bot_chat_allowed, created_at, last_seen_at) VALUES (?, ?, ?, 1, ?, ?)',
+      sellerId, `${slug}_admin_demo`, `Админ ${title}`, startOfData, ts0);
+    const { id } = createChannel(db, loadUser(db, sellerId, []), {
+      link: `https://t.me/linza_demo_ch_${slug}`, title, topic, subscribers: subs, reach_24: r24, reach_48: r48,
+      stats_url: rnd() < 0.6 ? `https://tgstat.ru/channel/@linza_demo_ch_${slug}` : '', formats,
+      free_dates: futureDates(between(4, 10)), had_vpn: hadVpn, contact: `@linza_demo_${slug}`.slice(0, 32)
+    });
+    if (verified) db.run('UPDATE ad_channels SET verified_at = ?, subscribers_at = ?, tg_chat_id = ? WHERE id = ?', ts0 - between(5, 40) * DAY, ts0 - DAY, -1_000_000_000_000 - i, id);
+    db.run('UPDATE ad_channels SET created_at = ?, updated_at = ? WHERE id = ?', ts0 - between(20, 60) * DAY, ts0 - between(0, 10) * DAY, id);
+    adChannels.push({ id, sellerId, formats, q });
+    // Past placements with reviews; a weak channel sometimes doesn't post at all.
+    for (const b of sample(vpnOwners, between(0, 5))) {
+      const format = pick(Object.keys(formats));
+      const at = ts0 - between(4, 55) * DAY;
+      const failed = rnd() > 0.35 + q * 0.6;
+      const deal = Number(db.run(
+        `INSERT INTO ad_deals (channel_id, seller_id, buyer_id, service_id, format, date, price, status, created_at, decided_at, published_at, review_asked_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, sellerId, b.owner_id, b.service_id, format, mskDay(at), formats[format], failed ? 'failed' : 'reviewed',
+        at - 3 * DAY, at - 2 * DAY, failed ? null : at, at + 2 * DAY, at + 2 * DAY).lastInsertRowid);
+      if (failed) continue;
+      const rating = Math.max(1, Math.min(5, Math.round(q * 5 + (rnd() - 0.5) * 1.6)));
+      const came = Math.round((r24 / 100) * (0.4 + q) * (0.6 + rnd()));
+      db.run('INSERT INTO ad_reviews (deal_id, channel_id, buyer_id, rating, came, payments, reach_match, text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        deal, id, b.owner_id, rating, came, Math.round(came * (0.03 + q * 0.06)), q > 0.7 ? 'yes' : q > 0.5 ? pick(['yes', 'partly']) : pick(['partly', 'no']),
+        rnd() < 0.7 ? pick(AD_TEXTS) : null, at + 2 * DAY);
+    }
+  });
+  // The dev user as a buyer: a request waiting for an answer, an agreed post, and one to review.
+  const myService = db.get('SELECT id FROM services WHERE owner_id = ? LIMIT 1', DEV_ADMIN)?.id ?? null;
+  const devDeal = (ch, format, dayOffset, status) => db.run(
+    `INSERT INTO ad_deals (channel_id, seller_id, buyer_id, service_id, format, date, price, status, created_at, decided_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ch.id, ch.sellerId, DEV_ADMIN, myService, format, mskDay(ts0 + dayOffset * DAY), ch.formats[format], status, ts0 - 2 * DAY, status === 'requested' ? null : ts0 - DAY, ts0 - DAY);
+  devDeal(adChannels[2], '1/24', 6, 'requested');
+  devDeal(adChannels[0], '1/24', 3, 'agreed');
+  devDeal(adChannels[8], '2/48', -3, 'agreed');
+  // …and as a seller with an incoming request.
+  const { id: mine } = createChannel(db, loadUser(db, DEV_ADMIN, config.adminIds), {
+    link: 'https://t.me/linza_demo_ch_mine', title: 'Мой тестовый канал', topic: 'tech', subscribers: 42000, reach_24: 7000, reach_48: 9000,
+    formats: { '1/24': 1900, '2/48': 2600 }, free_dates: futureDates(6), had_vpn: false, contact: '@linza_admin'
+  });
+  const b = vpnOwners[3];
+  db.run(`INSERT INTO ad_deals (channel_id, seller_id, buyer_id, service_id, format, date, price, comment, status, created_at, updated_at) VALUES (?, ?, ?, ?, '1/24', ?, 1900, ?, 'requested', ?, ?)`,
+    mine, DEV_ADMIN, b.owner_id, b.service_id, JSON.parse(db.get('SELECT free_dates FROM ad_channels WHERE id = ?', mine).free_dates)[0], 'Нужен пост про VPN для игр, креатив пришлём', ts0 - 3600_000, ts0 - 3600_000);
+});
+
 // Publish the two finished months so the home screen and the archive have data.
 for (const offset of [-2, -1]) publishTop(db, shiftPeriod(periodOf(ts0), offset), DEV_ADMIN);
 // Seeding must not spam: drop the outbox the publications produced.
@@ -309,6 +380,6 @@ db.run('DELETE FROM notifications');
 const n = (sql) => db.get(sql).n;
 console.log(`Seeded ${n('SELECT COUNT(*) n FROM services')} services, ${n('SELECT COUNT(*) n FROM users')} users, ` +
   `${n('SELECT COUNT(*) n FROM reviews')} reviews, ${n('SELECT COUNT(*) n FROM clicks')} clicks, ${n('SELECT COUNT(*) n FROM status_votes')} status votes, ` +
-  `${n("SELECT COUNT(*) n FROM status_changes WHERE status != 'operational'")} incidents. Market average: ${db.setting('market_avg_monthly')} ₽/мес.`);
+  `${n("SELECT COUNT(*) n FROM status_changes WHERE status != 'operational'")} incidents, ${n('SELECT COUNT(*) n FROM ad_channels')} ad channels, ${n('SELECT COUNT(*) n FROM ad_deals')} deals. Market average: ${db.setting('market_avg_monthly')} ₽/мес.`);
 console.log(`Demo admin / owner Telegram ID: ${DEV_ADMIN} (add it to ADMIN_IDS).`);
 db.close();

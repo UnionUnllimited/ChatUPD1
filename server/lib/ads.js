@@ -401,6 +401,7 @@ export function cancelDeal(db, user, id) {
   const d = dealRow(db, id);
   const who = party(d, user);
   if (!OPEN.includes(d.status)) throw badRequest('Эту сделку уже нельзя отменить');
+  if (who === 'seller' && d.status === 'requested') throw badRequest('Заявку продавец отклоняет, а не отменяет');
   const ch = channelRow(db, d.channel_id);
   const ts = now();
   db.tx(() => {
@@ -465,7 +466,7 @@ export function dealView(db, d, user) {
     review,
     can: {
       decide: who === 'seller' && d.status === 'requested',
-      cancel: OPEN.includes(d.status),
+      cancel: who === 'buyer' ? OPEN.includes(d.status) : d.status === 'agreed',
       publish: d.status === 'agreed' && dateCame(d, ts),
       review: who === 'buyer' && ['agreed', 'published'].includes(d.status) && dateCame(d, ts)
     }

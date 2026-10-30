@@ -571,3 +571,26 @@ details > summary::-webkit-details-marker { display: none }
 .pick-opt { min-height: 56px; border-radius: 18px; padding: 0 18px; font-size: 17px; font-weight: 600; text-align: left; display: flex; align-items: center }
 .why { margin: 0; font-size: 14px; color: var(--good); font-weight: 500 }
 .pick-entry { width: 100%; margin-top: 10px }
+
+/* Ad exchange */
+.callout.warn { background: color-mix(in srgb, var(--st-issues) 12%, transparent); box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--st-issues) 45%, transparent) }
+.vpn-name .tag { vertical-align: 3px; margin-left: 4px }
+.tag .check { opacity: 1; transform: none; width: 12px; height: 12px; margin-right: 2px; vertical-align: -1px; color: currentColor }
+.ad-reach { font-size: 14px; color: var(--text-2); font-variant-numeric: tabular-nums }
+.ad-offer { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 16px; font-variant-numeric: tabular-nums }
+.cpm { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; white-space: nowrap; font-variant-numeric: tabular-nums }
+.light { display: inline-flex; align-items: center; gap: 5px; font-weight: 600 }
+.light i { width: 8px; height: 8px; border-radius: 50% }
+.light.good { color: var(--good) } .light.good i { background: var(--st-ok) }
+.light.warn { color: var(--warn) } .light.warn i { background: var(--st-issues) }
+.light.bad { color: var(--bad) } .light.bad i { background: var(--st-outage) }
+.deal-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; width: 100%; color: inherit; border-radius: 22px; text-align: left }
+.stepper { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; list-style: none; margin: 0; padding: 0 }
+.stepper li i { display: block; height: 4px; border-radius: 999px; background: var(--well) }
+.stepper li.on i { background: var(--accent) }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px }
+.cal-w { font-size: 11.5px; color: var(--text-3); text-align: center; text-transform: uppercase }
+.cal-d { min-height: 44px; border-radius: 12px; background: var(--well); font-size: 15px; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; font-variant-numeric: tabular-nums }
+.cal-d small { font-size: 10px; font-weight: 500; color: var(--text-3) }
+.cal-d.on { background: var(--accent); color: var(--on-accent, #fff) } .cal-d.on small { color: inherit; opacity: .8 }
+.price-in { width: 116px; text-align: right; flex-shrink: 0 }

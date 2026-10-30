@@ -7,7 +7,7 @@ import {
   healthTag, uptimeBarHTML, bindUptimeBar
 } from '../ui.js';
 import { store } from '../store.js';
-import { PROTOCOL, COUNTRY, PLATFORM, TARIFF_MONTHS, MODERATION_STATUS, NOTIFY_TYPES, NETWORK, STATUS_CONFIG_FIELDS, monthLabel } from '../dict.js';
+import { PROTOCOL, COUNTRY, PLATFORM, TARIFF_MONTHS, MODERATION_STATUS, NOTIFY_TYPES, NETWORK, STATUS_CONFIG_FIELDS, AD_TOPIC, AD_FORMAT, AD_COMPLAINT_REASONS, monthLabel } from '../dict.js';
 import { editorHTML, bindEditor, barChart } from '../views/owner.js';
 
 /* ---------------- Shared bits ---------------- */
@@ -909,4 +909,81 @@ export async function serviceVotes(box, serviceId, onDone) {
     ]
   });
   return bindStatusActions(box, onDone);
+}
+
+/* ---------------- Ad exchange ---------------- */
+const AD_STATUS = { active: ['на бирже', 'good'], hidden: ['скрыт продавцом', 'neutral'], review: ['на проверке', 'warn'], blocked: ['снят', 'bad'] };
+const kfmt = (n) => (n >= 1e6 ? `${String(Math.round(n / 1e5) / 10).replace('.', ',')}M` : n >= 1e3 ? `${Math.round(n / 1e3)}K` : String(n));
+
+export async function adsScreen(root, { refresh }) {
+  const d = await get('/api/admin/ads');
+  const s = d.summary;
+  const review = d.channels.filter((c) => c.status === 'review');
+  // One button per row; the sheet holds complaints and every action.
+  const actions = (c) => `<button type="button" class="${c.status === 'review' ? 'lgb' : 'fill'} btn sm press" data-manage="${c.id}">Управлять</button>`;
+  const columns = [
+    { key: 'title', title: 'Канал', render: (c) => `<a href="${esc(c.link)}" target="_blank" rel="noopener"><b>${esc(c.title)}</b></a>${c.verified ? ` ${tag('✓', 'good')}` : ''}<br><span class="small muted">${esc(AD_TOPIC[c.topic]?.name || '')}</span>` },
+    { key: 'owner', title: 'Продавец', value: (c) => c.owner.username || '', render: (c) => `<a href="#/admin/users/${c.owner.id}">${who(c.owner)}</a><br><span class="small muted">${esc(c.contact)}</span>` },
+    { key: 'subscribers', title: 'Подписчики', num: true, render: (c) => kfmt(c.subscribers) },
+    { key: 'reach_24', title: 'Охват 24ч', num: true, render: (c) => `${kfmt(c.reach_24)}${c.stats_url ? '' : '<br><span class="small muted">со слов</span>'}` },
+    { key: 'cpm', title: 'Лучший CPM', num: true, value: (c) => c.best?.cpm ?? null, render: (c) => (c.best?.cpm != null ? `${rub(c.best.cpm)}<br><span class="small muted">${esc(AD_FORMAT[c.best.id].name)}</span>` : '—') },
+    { key: 'deals', title: 'Сделки', num: true },
+    { key: 'rating', title: 'Рейтинг', num: true, render: (c) => (c.rating ? `★ ${String(c.rating).replace('.', ',')}` : '—') },
+    { key: 'status', title: 'Статус', render: (c) => `${tag(AD_STATUS[c.status][0], AD_STATUS[c.status][1])}${c.complaints ? `<br><span class="small" style="color:var(--warn)">жалоб: ${c.complaints}</span>` : ''}${c.block_reason ? `<br><span class="small muted">${esc(c.block_reason)}</span>` : ''}` },
+    { key: 'act', title: '', sortable: false, render: actions }
+  ];
+  root.innerHTML = `
+    ${head('Биржа рекламы')}
+    <div class="tiles">
+      ${[['На бирже', s.active], ['На проверке', s.review], ['Подтверждены', s.verified], ['Заявок за 30 дней', s.requests30], ['Согласовано', s.agreed30], ['Отзывов', s.reviews30]]
+        .map(([k, v]) => `<div class="card stat"><span class="k">${k}</span><span class="v">${fmt(v)}</span></div>`).join('')}
+    </div>
+    ${review.length ? '<section><h2 class="section-title">На проверке после жалоб</h2><div id="tAdReview"></div></section>' : ''}
+    <section><h2 class="section-title">Все каналы</h2><div id="tAds"></div></section>
+    <section class="card panel stack-sm" style="max-width:640px">
+      <h3>Настройки биржи</h3>
+      <div class="grid-2">
+        <label class="field"><span>CPM «выгодно» до, ₽</span><input class="input" type="number" id="aGood" min="1" value="${d.config.cpm_good}"></label>
+        <label class="field"><span>CPM «норма» до, ₽</span><input class="input" type="number" id="aOk" min="1" value="${d.config.cpm_ok}"></label>
+        <label class="field"><span>Жалоб до снятия на проверку</span><input class="input" type="number" id="aComplaints" min="1" value="${d.config.complaints_review}"></label>
+        <label class="field"><span>Просить отзыв через, ч после даты</span><input class="input" type="number" id="aReview" min="1" value="${d.config.review_after_h}"></label>
+      </div>
+      <button type="button" class="fill btn press" id="aSave" style="align-self:flex-start">Сохранить настройки</button>
+    </section>`;
+  if (review.length) dataTable($('#tAdReview', root), { rows: review, columns });
+  dataTable($('#tAds', root), { rows: d.channels, columns, empty: 'Каналов на бирже пока нет' });
+
+  const ac = new AbortController();
+  const run = async (id, action) => {
+    let note = null;
+    if (action === 'block') { note = await reasonSheet('Снять канал с биржи', 'Причину увидит продавец'); if (!note) return; }
+    else closeSheet(true);
+    if (await act(() => post(`/api/admin/ads/${id}/${action}`, { note }), { restore: 'Канал снова на бирже', block: 'Канал снят', verify: 'Подтверждён вручную', unverify: 'Галочка убрана' }[action])) refresh();
+  };
+  root.addEventListener('click', async (e) => {
+    const m = e.target.closest('[data-manage]');
+    if (!m) return;
+    const c = d.channels.find((x) => x.id === Number(m.dataset.manage));
+    const { items } = c.complaints || c.status === 'review' ? await get(`/api/admin/ads/${c.id}/complaints`) : { items: [] };
+    const reason = (id) => AD_COMPLAINT_REASONS.find((r) => r.id === id)?.name || id;
+    const btn = (action, label, cls = 'fill') => `<button type="button" class="${cls} btn block press" data-run="${action}">${label}</button>`;
+    openSheet(c.title, `
+      <div class="row-flex between"><span>${tag(AD_STATUS[c.status][0], AD_STATUS[c.status][1])} ${c.verified ? tag('канал подтверждён', 'good') : ''}</span>
+        <a href="${esc(c.link)}" target="_blank" rel="noopener">${esc(c.link.replace('https://', ''))}</a></div>
+      ${items.length ? `<div><p class="label">Жалобы</p><div class="stack-sm">${items.map((x) => `
+        <div class="card panel stack-sm"><div class="row-flex between"><b>${esc(reason(x.reason))}</b><span class="small muted">${dateTime(x.created_at)}</span></div>
+          ${x.text ? `<span>${esc(x.text)}</span>` : ''}<span class="small muted"><a href="#/admin/users/${x.user_id}">${who({ username: x.username, first_name: x.first_name, id: x.user_id })}</a>${x.resolved_at ? ' · закрыта' : ''}</span></div>`).join('')}</div></div>` : ''}
+      <div class="stack-sm">
+        ${c.status === 'review' || c.status === 'blocked' ? btn('restore', 'Вернуть на биржу', 'lgb') : ''}
+        ${c.status !== 'blocked' ? btn('block', 'Снять с биржи') : ''}
+        ${btn(c.verified ? 'unverify' : 'verify', c.verified ? 'Убрать галочку «канал подтверждён»' : 'Подтвердить владельца вручную')}
+      </div>
+      <p class="note">Галочку обычно ставит бот, когда продавец назначает его админом канала. Вручную — только если вы сами убедились, что канал принадлежит продавцу.</p>`,
+    (sheet) => sheet.addEventListener('click', (ev) => { const b = ev.target.closest('[data-run]'); if (b) run(c.id, b.dataset.run); }));
+  }, { signal: ac.signal });
+  $('#aSave', root).addEventListener('click', async () => {
+    const body = { cpm_good: Number($('#aGood', root).value), cpm_ok: Number($('#aOk', root).value), complaints_review: Number($('#aComplaints', root).value), review_after_h: Number($('#aReview', root).value) };
+    if (await act(() => api('/api/admin/ads/config', { method: 'PUT', body }), 'Настройки биржи сохранены')) refresh();
+  });
+  return () => ac.abort();
 }

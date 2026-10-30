@@ -20,7 +20,10 @@ export function adsRoutes(r, { db, config }) {
   r.post('/api/ads/channels/:id/complaints', (ctx) => complain(db, requireUser(ctx), intParam(ctx.params.id), ctx.body, { envAdmins: config.adminIds }));
 
   /* -------- Sellers -------- */
-  r.get('/api/ads/my', (ctx) => ({ channels: myChannels(db, requireUser(ctx)) }));
+  r.get('/api/ads/my', (ctx) => {
+    const cfg = adConfig(db);
+    return { channels: myChannels(db, requireUser(ctx)), config: { cpm_good: cfg.cpm_good, cpm_ok: cfg.cpm_ok } };
+  });
   r.get('/api/ads/my/:id', (ctx) => sellerChannel(db, requireUser(ctx), intParam(ctx.params.id)));
   r.post('/api/ads/my', (ctx) => createChannel(db, requireUser(ctx), ctx.body));
   r.put('/api/ads/my/:id', (ctx) => updateChannel(db, requireUser(ctx), intParam(ctx.params.id), ctx.body));

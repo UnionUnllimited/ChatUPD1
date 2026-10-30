@@ -61,7 +61,11 @@ export async function renderOwnerWorkspace(box) {
         <span class="row-flex grow">${logoHTML(s, 'sm')}<span class="grow" style="display:flex;flex-direction:column"><b>${esc(s.name)}</b>
           <span class="small muted">${s.min_monthly ? `от ${rub(s.min_monthly)}/мес` : 'Карточка не заполнена'}</span></span></span>
         ${serviceStatus(s)}${icon.chev}
-      </button>`).join('')}</div></section>` : ''}
+      </button>`).join('')}</div></section>
+    <section><p class="label">Реклама в Telegram-каналах</p><div class="card group">
+      <button type="button" class="row press" data-nav="/ads"><span>Биржа рекламы</span><span class="row-flex"><span class="v small">каналы, охват, CPM</span>${icon.chev}</span></button>
+      <button type="button" class="row press" data-nav="/ads/deals?as=buyer"><span>Мои сделки</span><span class="row-flex">${store.me?.counts?.ad_deals ? `<span class="tag">${store.me.counts.ad_deals}</span>` : ''}${icon.chev}</span></button>
+    </div></section>` : ''}
     ${pendingApps.length ? `<section><p class="label">Заявки на подключение</p><div class="stack-sm">${pendingApps.map((a) => `
       <div class="card panel stack-sm">
         <div class="row-flex between"><b>${esc(a.name)}</b>${statusTag(a.status)}</div>
@@ -78,7 +82,7 @@ export async function renderOwnerWorkspace(box) {
         <div class="row"><span>3. Заполняете карточку и тарифы — после модерации они в каталоге</span></div>
       </div>` : ''}
     <button type="button" class="lgb cta press" data-nav="/owner/apply">${icon.plus} Добавить VPN</button>
-    <p class="note">Любое изменение карточки публикуется только после модерации. Рейтинг нельзя купить: он строится по отзывам, переходам и проверкам.</p>`;
+    <p class="note">Любое изменение карточки публикуется только после модерации. Рейтинг нельзя купить: он строится по отзывам, переходам и стабильности по сигналам клиентов.</p>`;
 }
 
 export async function ownerHome(root) {

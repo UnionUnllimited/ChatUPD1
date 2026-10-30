@@ -6,6 +6,7 @@ import { MODERATION_STATUS, NOTIFY_TYPES } from '../dict.js';
 import { topExplainer } from './home.js';
 import { reviewSheet } from './service.js';
 import { renderOwnerWorkspace } from './owner.js';
+import { renderSellerWorkspace } from './ads.js';
 
 const statusTag = (st) => `<span class="tag ${st === 'approved' ? 'good' : st === 'rejected' ? 'bad' : 'warn'}">${st === 'approved' ? 'Опубликован' : MODERATION_STATUS[st] || st}</span>`;
 
@@ -21,7 +22,8 @@ export async function profile(root) {
   const me = store.me;
   if (!me) return needTelegram(root, 'Профиль');
   const name = [me.first_name, me.last_name].filter(Boolean).join(' ');
-  const role = me.active_role === 'vpn_owner' ? 'vpn_owner' : 'client';
+  const ROLES = [{ id: 'client', name: 'Клиент' }, { id: 'vpn_owner', name: 'VPN-сервис' }, { id: 'ad_seller', name: 'Реклама' }];
+  const role = ROLES.some((r) => r.id === me.active_role) ? me.active_role : 'client';
 
   root.innerHTML = `
     <div class="center stack-sm" style="align-items:center;padding-top:8px">
@@ -29,7 +31,7 @@ export async function profile(root) {
       <h1 style="font-size:26px;font-weight:700">${esc(name)}</h1>
       ${me.username ? `<span class="muted">@${esc(me.username)}</span>` : ''}
     </div>
-    <div id="roleBox">${segHTML([{ id: 'client', name: 'Клиент' }, { id: 'vpn_owner', name: 'VPN-сервис' }], role)}</div>
+    <div id="roleBox">${segHTML(ROLES, role)}</div>
     <div id="workspace" class="stack" style="gap:22px"></div>`;
 
   const drawClient = () => {
@@ -49,7 +51,7 @@ export async function profile(root) {
       <section>
         <p class="label">Скоро в Линзе</p>
         <div class="card group">
-          ${['Биржа рекламы в Telegram-каналах', 'Серверы и хостинг', 'Биржа работы: панели, боты, поддержка', 'Готовые решения и проекты'].map((t) =>
+          ${['Серверы и хостинг', 'Биржа работы: панели, боты, поддержка', 'Готовые решения и проекты'].map((t) =>
             `<div class="row disabled"><span>${t}</span><span class="tag neutral">скоро</span></div>`).join('')}
         </div>
       </section>
@@ -62,11 +64,13 @@ export async function profile(root) {
 
   const draw = async (r) => {
     if (r === 'vpn_owner') await renderOwnerWorkspace($('#workspace', root));
+    else if (r === 'ad_seller') await renderSellerWorkspace($('#workspace', root));
     else drawClient();
   };
 
   bindSeg($('#roleBox .seg', root), async (v) => {
-    patch('/api/me', { active_role: v === 'vpn_owner' && !hasRole('vpn_owner') ? 'client' : v }).catch(() => {});
+    // A role the account doesn't hold yet (no VPN approved, no channel listed) is only remembered locally.
+    patch('/api/me', { active_role: v !== 'client' && !hasRole(v) ? 'client' : v }).catch(() => {});
     me.active_role = v;
     await draw(v);
   });

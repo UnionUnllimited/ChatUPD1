@@ -5,7 +5,7 @@ import { api, get, post, adminSession, setAdminSession } from '../api.js';
 import { $, $$, esc, errorHTML, closeSheet, sheetIsOpen, setRouteBack, toastError, avatarHTML, emptyHTML } from '../ui.js';
 import { store, loadMe, hasRole } from '../store.js';
 import { adminApplications, adminModeration, adminChecks, adminTop, adminLog } from '../views/admin.js';
-import { dashboard, services, serviceDetail, serviceNew, users, userDetail, reviews, broadcast, notifications, settings, statusScreen, statusSettings } from './views.js';
+import { dashboard, services, serviceDetail, serviceNew, users, userDetail, reviews, broadcast, notifications, settings, statusScreen, statusSettings, adsScreen } from './views.js';
 
 const I = (d) => `<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const NAV = [
@@ -16,6 +16,7 @@ const NAV = [
   { path: '/admin/users', name: 'Пользователи', icon: I('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.4 3.3-5.3 6.5-5.3s5.7 1.9 6.5 5.3M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20c-.5-2.4-1.8-4-3.5-4.8"/>') },
   { path: '/admin/reviews', name: 'Отзывы', icon: I('<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>') },
   { path: '/admin/status', name: 'Статусы', count: 'status_alerts', icon: I('<path d="M3 12h4l3-7 4 14 3-7h4"/>') },
+  { path: '/admin/ads', name: 'Биржа рекламы', count: 'ads_review', icon: I('<path d="M4 10v4h3l5 4V6L7 10z"/><path d="M16 9a4 4 0 0 1 0 6M19 6.5a8 8 0 0 1 0 11"/>') },
   { path: '/admin/checks', name: 'Проверки', count: 'unchecked', icon: I('<path d="m5 12 4.5 4.5L19 7"/>') },
   { path: '/admin/top', name: 'Топ месяца', icon: I('<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM17 6h3v1a3 3 0 0 1-3 3M7 6H4v1a3 3 0 0 0 3 3"/>') },
   { path: '/admin/broadcast', name: 'Рассылка', icon: I('<path d="m21.5 4.5-19 7.4 6.2 2.1 2.3 6.5 3.4-4.3 5 3.8z"/><path d="m8.7 14 7.8-6.3"/>') },
@@ -29,7 +30,7 @@ const routes = [
   ['/admin', dashboard], ['/admin/applications', adminApplications, true], ['/admin/moderation', adminModeration, true],
   ['/admin/services', services], ['/admin/services/new', serviceNew], ['/admin/services/:id', serviceDetail],
   ['/admin/users', users], ['/admin/users/:id', userDetail], ['/admin/reviews', reviews],
-  ['/admin/status', statusScreen], ['/admin/status/settings', statusSettings],
+  ['/admin/status', statusScreen], ['/admin/status/settings', statusSettings], ['/admin/ads', adsScreen],
   ['/admin/checks', adminChecks, true], ['/admin/top', adminTop, true], ['/admin/broadcast', broadcast, true],
   ['/admin/notifications', notifications], ['/admin/settings', settings], ['/admin/log', adminLog, true]
 ].map(([pattern, view, narrow]) => {
@@ -52,7 +53,7 @@ let seq = 0;
 async function refreshCounts() {
   try {
     const s = await get('/api/admin/summary');
-    const counts = { applications: s.applications, moderation: s.revisions + s.promos + s.reviews, unchecked: s.unchecked, status_alerts: s.status_alerts };
+    const counts = { applications: s.applications, moderation: s.revisions + s.promos + s.reviews, unchecked: s.unchecked, status_alerts: s.status_alerts, ads_review: s.ads_review };
     $$('#sideNav [data-count]').forEach((el) => {
       const n = counts[el.dataset.count] || 0;
       el.hidden = !n;
