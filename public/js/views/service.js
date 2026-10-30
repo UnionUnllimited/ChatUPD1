@@ -3,7 +3,7 @@ import { store, trackView } from '../store.js';
 import { haptic, openLink, setMain, copyText } from '../tg.js';
 import {
   $, $$, esc, rub, fmt, plural, icon, logoHTML, marketTag, topTag, ratingStr, dateLong, dateShort, stars,
-  openSheet, closeSheet, setSheetMain, toast, toastError, monthsWord, paymentsText,
+  openSheet, closeSheet, sheetIsOpen, setSheetMain, toast, toastError, monthsWord, paymentsText,
   ago, healthTag, uptimeBarHTML, bindUptimeBar
 } from '../ui.js';
 import { PROTOCOL, COUNTRY, PLATFORM, TARIFF_MONTHS, MODERATION_STATUS, NETWORKS, NETWORK } from '../dict.js';
@@ -11,30 +11,25 @@ import { PROTOCOL, COUNTRY, PLATFORM, TARIFF_MONTHS, MODERATION_STATUS, NETWORKS
 const timeMsk = (ts) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' });
 
 // Status from client signals + the two one-tap votes. Re-rendered after each vote.
+// Kept to the essentials: details (day breakdown) appear on tap, networks only during a failure.
 function renderStatus(box, h, verifiedAt, serviceId) {
   const mine = h.my_vote;
+  const failing = h.status !== 'operational';
+  const nets = failing && h.networks ? h.networks.items.filter((n) => n.down).sort((a, b) => b.down - a.down).slice(0, 3) : [];
   box.innerHTML = `
-    <div class="row-flex between" style="align-items:flex-start">
-      <span style="display:flex;flex-direction:column;gap:4px">${healthTag(h.status, true)}
-        <span class="small muted">${h.status !== 'operational' && h.since ? `с ${timeMsk(h.since)} · ` : ''}${h.last_signal_at ? `последний сигнал ${ago(h.last_signal_at)}` : 'сигналов от клиентов пока нет'}</span></span>
-    </div>
+    ${healthTag(h.status, true)}
+    <span class="small muted">${failing && h.since ? `с ${timeMsk(h.since)} · ` : ''}${h.last_signal_at ? `последний сигнал ${ago(h.last_signal_at)}` : 'сигналов от клиентов пока нет'}</span>
     ${uptimeBarHTML(h.days, h.uptime30)}
-    <div class="legend"><span><i></i>без сбоев</span><span><i class="issues"></i>сообщения о сбоях</span><span><i class="outage"></i>массовый сбой</span></div>
-    ${h.networks ? `<div class="nets" style="margin-top:6px"><span class="small muted">По сетям за ${h.networks.hours} ч</span>${h.networks.items.map((n) => {
-      const total = n.up + n.down;
-      return `<div class="net-row"><span>${esc(NETWORK[n.network]?.name || n.network)}</span><span class="split"><b style="width:${(n.up / total) * 100}%"></b><s style="width:${(n.down / total) * 100}%"></s></span><span class="n">работает у ${n.up} · сбои у ${n.down}</span></div>`;
-    }).join('')}</div>` : ''}
-    <p class="label" style="margin:10px 0 0">Как у вас сейчас?</p>
+    ${nets.length ? `<span class="small">Чаще сообщают: ${nets.map((n) => `${esc(NETWORK[n.network]?.name || n.network)} — ${n.down}`).join(', ')}</span>` : ''}
     <div class="vote-row">
-      <button type="button" class="${mine?.value === 'up' ? 'sel' : 'fill'} btn press" data-vote="up" aria-pressed="${mine?.value === 'up'}">✓ Работает у меня</button>
-      <button type="button" class="${mine?.value === 'down' ? 'sel' : 'fill'} btn press" data-vote="down" aria-pressed="${mine?.value === 'down'}">✕ Не работает у меня</button>
+      <button type="button" class="${mine?.value === 'up' ? 'sel' : 'fill'} btn press" data-vote="up" aria-pressed="${mine?.value === 'up'}">Работает у меня</button>
+      <button type="button" class="${mine?.value === 'down' ? 'sel' : 'fill'} btn press" data-vote="down" aria-pressed="${mine?.value === 'down'}">Не работает у меня</button>
     </div>
     <div class="net-pick" id="netPick" hidden>
-      <div class="row-flex between"><span class="small muted">Где проверяли? Можно пропустить</span><button type="button" class="fill circle press" id="netClose" aria-label="Пропустить">${icon.x}</button></div>
+      <div class="row-flex between"><span class="small muted">Какая сеть? Можно пропустить</span><button type="button" class="fill circle press" id="netClose" aria-label="Пропустить">${icon.x}</button></div>
       <div class="chips">${NETWORKS.map((n) => `<button type="button" class="${mine?.network === n.id ? 'sel' : 'fill'} chip press" data-net="${n.id}">${n.name}</button>`).join('')}</div>
     </div>
-    ${mine ? `<span class="small muted">Ваша отметка: ${mine.value === 'up' ? '«Работает у меня»' : '«Не работает у меня»'}${mine.network ? `, ${esc(NETWORK[mine.network]?.name || '')}` : ''} · ${ago(mine.created_at)}</span>` : ''}
-    ${verifiedAt ? `<span class="verified-line">${icon.shield} Проверено администратором · ${dateLong(verifiedAt)}</span>` : ''}`;
+    ${verifiedAt ? `<span class="verified-line">${icon.shield} Проверено администратором · ${dateShort(verifiedAt)}</span>` : ''}`;
   bindUptimeBar(box, h.days, h.uptime30);
 
   box.querySelectorAll('[data-vote]').forEach((b) => b.addEventListener('click', async () => {
@@ -138,7 +133,7 @@ export default async function service(root, { params }) {
       <div class="card stat"><span class="k">Стран</span><span class="v">${countries.length}</span></div>
     </div>
 
-    <button type="button" class="cta-bot press" id="goBot">${icon.bot}<span>Перейти в бот<small>${esc(s.bot_url.replace('https://t.me/', '@').split('?')[0])} · оплата и подключение там</small></span></button>
+    <button type="button" class="cta-bot press" id="goBot">${icon.bot}<span>Перейти в бот</span></button>
 
     <section class="card panel stack-sm status-card" id="statusBox"></section>
 
@@ -162,7 +157,7 @@ export default async function service(root, { params }) {
       <p class="label">Параметры</p>
       <div class="card group">
         <div class="row"><span>Протоколы</span><span class="v">${esc(s.protocols.map((p) => PROTOCOL[p]?.name || p).join(', '))}</span></div>
-        <div class="row" style="align-items:flex-start"><span>Страны</span><span class="v"><span class="flags">${countries.map((c) => c.flag).join(' ')}</span><br><span class="small">${esc(countries.map((c) => c.name).join(', '))}</span></span></div>
+        <div class="row" style="align-items:flex-start"><span>Страны</span><span class="v">${esc(countries.map((c) => c.name).join(', '))}</span></div>
         <div class="row"><span>Устройства</span><span class="v">до ${s.devices}</span></div>
         <div class="row"><span>Платформы</span><span class="v">${esc(s.platforms.map((p) => PLATFORM[p]?.name || p).join(', '))}</span></div>
         <div class="row"><span>Оплата</span><span class="v">${esc(paymentsText(s.payments))}</span></div>
@@ -219,7 +214,8 @@ export default async function service(root, { params }) {
 
   let offset = 0;
   const loadReviews = async () => {
-    const data = await get(`/api/services/${id}/reviews?offset=${offset}`);
+    const limit = offset ? 20 : 5;
+    const data = await get(`/api/services/${id}/reviews?offset=${offset}&limit=${limit}`);
     const list = $('#reviewsList', root);
     $('#moreReviews', list)?.remove();
     if (!offset && s.reviews) {
@@ -234,7 +230,7 @@ export default async function service(root, { params }) {
         <p>${esc(r.text)}</p>
       </article>`).join(''));
     offset += data.items.length;
-    if (data.items.length === 20) {
+    if (data.items.length === limit) {
       list.insertAdjacentHTML('beforeend', '<button type="button" class="fill btn block press" id="moreReviews">Показать ещё</button>');
       $('#moreReviews', list).addEventListener('click', () => loadReviews().catch(toastError));
     }
@@ -245,6 +241,11 @@ export default async function service(root, { params }) {
     goToBot(s, 'card');
     if (store.me && !canReview) { canReview = true; setTimeout(renderMine, 600); }
   };
-  $('#goBot', root).addEventListener('click', go);
-  setMain({ text: 'Перейти в бот', onClick: go, shine: true });
+  const cta = $('#goBot', root);
+  cta.addEventListener('click', go);
+  // One bot button on screen at a time: the bottom one shows up once the in-page one scrolls away.
+  const main = { text: 'Перейти в бот', onClick: go, shine: true };
+  const io = new IntersectionObserver(([e]) => { if (!sheetIsOpen()) setMain(e.isIntersecting ? null : main); });
+  io.observe(cta);
+  return () => io.disconnect();
 }

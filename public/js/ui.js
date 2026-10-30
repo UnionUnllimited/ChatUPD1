@@ -296,7 +296,7 @@ export function uptimeBarHTML(days, uptime) {
     <div class="uptime" role="img" aria-label="Доступность за 30 дней: ${String(uptime).replace('.', ',')}% времени без сбоев, дней со сбоями: ${bad}">
       ${days.map((d, i) => `<i class="${d.nodata ? 'nodata' : d.outage_min ? 'outage' : d.issues_min ? 'issues' : 'ok'}" data-i="${i}"></i>`).join('')}
     </div>
-    <div class="uptime-scale"><span>30 дней назад</span><span class="uptime-readout">${String(uptime).replace('.', ',')}% без сбоев</span><span>сегодня</span></div>`;
+    <div class="uptime-readout">${String(uptime).replace('.', ',')}% без сбоев за 30 дней</div>`;
 }
 
 export function bindUptimeBar(root, days, uptime) {
@@ -310,7 +310,7 @@ export function bindUptimeBar(root, days, uptime) {
     bar.querySelectorAll('i').forEach((x, k) => x.classList.toggle('on', k === i));
     out.textContent = `${dateShort(days[i].day)}: ${dayText(days[i])}`;
     clearTimeout(bar._t);
-    bar._t = setTimeout(() => { bar.querySelectorAll('i').forEach((x) => x.classList.remove('on')); out.textContent = `${String(uptime).replace('.', ',')}% без сбоев`; }, 4000);
+    bar._t = setTimeout(() => { bar.querySelectorAll('i').forEach((x) => x.classList.remove('on')); out.textContent = `${String(uptime).replace('.', ',')}% без сбоев за 30 дней`; }, 4000);
   });
 }
 
@@ -340,14 +340,14 @@ export function vpnCardHTML(s, { fav = false, cmp = false } = {}) {
         <div class="vpn-name">${esc(s.name)}</div>
         <div class="meta">
           <span><span class="star">★</span> ${ratingStr(s.rating)} · ${fmt(s.reviews)} ${plural(s.reviews, 'отзыв', 'отзыва', 'отзывов')}</span>
-          ${healthTag(s.health)}${s.verified_at ? `<span class="ok">${icon.shield} ${dateShort(s.verified_at)}</span>` : ''}
+          ${s.health && s.health !== 'operational' ? healthTag(s.health) : s.verified_at ? `<span class="ok">${icon.shield} ${dateShort(s.verified_at)}</span>` : ''}
         </div>
       </div>
       <button type="button" class="fill circle fav press" data-fav="${s.id}" aria-pressed="${fav}" aria-label="${fav ? 'Убрать из избранного' : 'В избранное'}">${icon.heart(fav)}</button>
     </div>
-    <div class="badges">${topTag(s.top)}${keyBadges(s, s.top ? 3 : 4)}</div>
+    <div class="badges">${topTag(s.top)}${keyBadges(s, s.top ? 2 : 3)}</div>
     <div class="vpn-foot">
-      <div class="stack-sm price" style="gap:6px"><span class="price-line"><span class="from">от</span><b>${rub(s.min_monthly)}</b><small>/мес</small></span>${s.market ? `<span>${marketTag(s.market)}</span>` : ''}</div>
+      <div class="stack-sm price" style="gap:6px"><span class="price-line"><span class="from">от</span><b>${rub(s.min_monthly)}</b><small>/мес</small></span>${s.market === 'below' ? `<span>${marketTag(s.market)}</span>` : ''}</div>
       <div class="vpn-actions">
         <button type="button" class="${cmp ? 'sel' : 'fill'} circle press cmp-btn" data-cmp="${s.id}" aria-pressed="${cmp}" aria-label="${cmp ? 'Убрать из сравнения' : 'Сравнить'}">${icon.compare(cmp)}</button>
         ${s.bot_url ? `<button type="button" class="go-bot btn sm press" data-go="${s.id}" data-url="${esc(s.bot_url)}">${icon.bot} В бот</button>` : ''}

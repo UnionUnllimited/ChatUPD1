@@ -10,19 +10,18 @@ import { PROTOCOLS, COUNTRIES, PLATFORMS, PAYMENTS, TARIFF_MONTHS, MODERATION_ST
 
 /* ---------------- Health from client signals ---------------- */
 async function drawHealth(box, serviceId) {
-  const { health: h, window: w, dispute } = await get(`/api/owner/services/${serviceId}/health`);
+  const { health: h, window: w, window_min: wm, dispute } = await get(`/api/owner/services/${serviceId}/health`);
   const failing = h.status !== 'operational';
-  const nets = Object.entries(w.down_networks || {}).sort((a, b) => b[1] - a[1]).map(([n, c]) => `${NETWORK[n]?.name || n} — ${c}`).join(', ');
+  const nets = Object.entries(w.down_networks || {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([n, c]) => `${NETWORK[n]?.name || n} — ${c}`).join(', ');
   const openDispute = dispute?.state === 'open';
+  // Calm when all is well; details and the dispute button only during a failure.
   box.innerHTML = `
-    <div class="row-flex between" style="align-items:flex-start"><span style="display:flex;flex-direction:column;gap:4px">${healthTag(h.status, true)}
-      <span class="small muted">${h.last_signal_at ? `Последний сигнал клиента ${ago(h.last_signal_at)}` : 'Клиенты ещё не отмечали статус'}</span></span></div>
+    ${healthTag(h.status, true)}
+    <span class="small muted">${h.last_signal_at ? `Последний сигнал клиента ${ago(h.last_signal_at)}` : 'Клиенты ещё не отмечали статус'}</span>
     ${uptimeBarHTML(h.days, h.uptime30)}
-    ${failing ? `<p class="small" style="margin:4px 0 0;color:var(--text-2)">За последние часы: ${w.down_n} ${plural(w.down_n, 'сигнал', 'сигнала', 'сигналов')} о сбоях, ${w.up_n} — что работает.${nets ? ` По сетям: ${esc(nets)}.` : ''} Статус снимется сам, когда клиенты отметят, что всё работает.</p>` : ''}
-    ${openDispute ? '<span class="tag warn" style="align-self:flex-start">Спор на рассмотрении у администратора</span>'
-      : failing ? '<button type="button" class="fill btn press" id="dispute" style="align-self:flex-start">Оспорить статус</button>'
-      : dispute ? `<span class="small muted">Последний спор: ${dispute.state === 'cleared' ? 'статус снят администратором' : 'статус подтверждён'}</span>` : ''}
-    <p class="note" style="padding:0">Статус ставят клиенты кнопками «Работает у меня» / «Не работает у меня»; он влияет на «Стабильность» в топе месяца. Уведомление о сбоях придёт в бот.</p>`;
+    ${failing ? `<span class="small">${w.down_n} ${plural(w.down_n, 'сигнал', 'сигнала', 'сигналов')} о сбоях за ${duration(wm)}${nets ? `: ${esc(nets)}` : ''}</span>` : ''}
+    ${openDispute ? '<span class="tag warn" style="align-self:flex-start">Спор у администратора</span>'
+      : failing ? '<button type="button" class="fill btn press" id="dispute" style="align-self:flex-start">Оспорить</button>' : ''}`;
   bindUptimeBar(box, h.days, h.uptime30);
   $('#dispute', box)?.addEventListener('click', () => openSheet('Оспорить статус', `
       <p class="note" style="font-size:15px">Администратор получит уведомление, проверит сервис и снимет статус «${HEALTH[h.status].name}», если он ошибочный.</p>

@@ -4,7 +4,7 @@ import { haptic, setMain, mainProgress, confirmDialog, openLink } from '../tg.js
 import {
   $, $$, esc, rub, fmt, plural, icon, logoHTML, avatarHTML, dateShort, dateTime, stars, segHTML, bindSeg,
   openSheet, closeSheet, setSheetMain, reasonSheet, toast, toastError, monthsWord, paymentsText,
-  duration, healthTag, uptimeBarHTML, bindUptimeBar
+  healthTag, uptimeBarHTML, bindUptimeBar
 } from '../ui.js';
 import { store } from '../store.js';
 import { PROTOCOL, COUNTRY, PLATFORM, TARIFF_MONTHS, MODERATION_STATUS, NOTIFY_TYPES, NETWORK, STATUS_CONFIG_FIELDS, monthLabel } from '../dict.js';
@@ -789,19 +789,23 @@ function bindStatusActions(root, onDone) {
   return () => ac.abort();
 }
 
-const windowText = (w) => `«не работает»: ${w.down_n} (вес ${String(w.down_w).replace('.', ',')}) · «работает»: ${w.up_n} (вес ${String(w.up_w).replace('.', ',')})`;
+const num = (v) => String(Math.round(v * 100) / 100).replace('.', ',');
+// Counts in the text, weights in the tooltip.
+const windowText = (w) => `<span title="Вес: сбои ${num(w.down_w)}, работает ${num(w.up_w)}">${w.down_n} о сбоях · ${w.up_n} работает</span>`;
 
 export async function statusScreen(root, { refresh }) {
   const d = await get('/api/admin/status');
   const cfg = d.config;
+  // Empty sections are not shown: the screen lists only what needs attention.
+  const calm = !d.disputes.length && !d.anomalies.length;
   root.innerHTML = `
-    ${head('Статусы', '<a class="fill btn sm press" href="#/admin/status/settings">Настройки статусов</a>')}
-    <p class="note" style="font-size:15px;padding:0">Статус ставят клиенты кнопками «Работает у меня» / «Не работает у меня». Вмешиваться нужно, только когда владелец оспорил статус или система заметила аномалию — об этом придёт сообщение в бот. Сейчас: «Сообщения о сбоях» от ${cfg.issues_votes} голосов (вес ${cfg.issues_weight}), «Массовый сбой» от ${cfg.outage_votes} (вес ${cfg.outage_weight}) за ${cfg.window_min} мин, автоснятие через ${duration(cfg.clear_after_min)}.</p>
-    <section><h2 class="section-title">Споры владельцев</h2><div id="tDisputes"></div></section>
-    <section><h2 class="section-title">Аномалии</h2><div id="tAnomalies"></div></section>
+    ${head('Статусы', '<a class="fill btn sm press" href="#/admin/status/settings">Настройки</a>')}
+    ${calm ? '<p class="note" style="font-size:15px;padding:0">Споров и аномалий нет — вмешиваться не нужно.</p>' : ''}
+    ${d.disputes.length ? '<section><h2 class="section-title">Споры владельцев</h2><div id="tDisputes"></div></section>' : ''}
+    ${d.anomalies.length ? '<section><h2 class="section-title">Аномалии</h2><div id="tAnomalies"></div></section>' : ''}
     <section><h2 class="section-title">Сейчас со сбоями</h2><div id="tIncidents"></div></section>
-    <section><h2 class="section-title">История изменений</h2><div id="tChanges"></div></section>`;
-  dataTable($('#tDisputes', root), {
+    ${d.changes.length ? '<section><h2 class="section-title">Последние изменения</h2><div id="tChanges"></div></section>' : ''}`;
+  if (d.disputes.length) dataTable($('#tDisputes', root), {
     rows: d.disputes, empty: 'Открытых споров нет', columns: [
       { key: 'name', title: 'Сервис', render: (x) => `<a href="#/admin/services/${x.service_id}">${esc(x.name)}</a>` },
       { key: 'status', title: 'Оспорен', render: (x) => healthTag(x.status) },
@@ -811,7 +815,7 @@ export async function statusScreen(root, { refresh }) {
       { key: 'act', title: '', sortable: false, render: (x) => statusActions(x.service_id, x.status, false) }
     ]
   });
-  dataTable($('#tAnomalies', root), {
+  if (d.anomalies.length) dataTable($('#tAnomalies', root), {
     rows: d.anomalies, empty: 'Аномалий нет', columns: [
       { key: 'name', title: 'Сервис', render: (x) => `<a href="#/admin/services/${x.service_id}">${esc(x.name)}</a>` },
       { key: 'kind', title: 'Что заметили', cls: 'text', render: (x) => (x.kind === 'spike'
@@ -832,12 +836,12 @@ export async function statusScreen(root, { refresh }) {
       { key: 'name', title: 'Сервис', render: (x) => `<a class="cell-main" href="#/admin/services/${x.service_id}" style="color:inherit">${logoHTML(x, 'sm')}<b>${esc(x.name)}</b></a>` },
       { key: 'status', title: 'Статус', render: (x) => `${healthTag(x.status)}${x.confirmed_at ? '<br><span class="small muted">подтверждён</span>' : ''}` },
       { key: 'since', title: 'С', num: true, render: (x) => dateTime(x.since) },
-      { key: 'window', title: 'Голоса за окно', cls: 'text', sortable: false, render: (x) => esc(windowText(x.window)) },
+      { key: 'window', title: 'Голоса за окно', sortable: false, render: (x) => windowText(x.window) },
       { key: 'act', title: '', sortable: false, render: (x) => statusActions(x.service_id, x.status) }
     ]
   });
-  dataTable($('#tChanges', root), {
-    rows: d.changes, empty: 'Изменений ещё не было', columns: [
+  if (d.changes.length) dataTable($('#tChanges', root), {
+    rows: d.changes.slice(0, 15), empty: 'Изменений ещё не было', columns: [
       { key: 'changed_at', title: 'Когда', num: true, render: (x) => dateTime(x.changed_at) },
       { key: 'name', title: 'Сервис', render: (x) => `<a href="#/admin/services/${x.service_id}">${esc(x.name)}</a>` },
       { key: 'status', title: 'Стал', render: (x) => healthTag(x.status) },
@@ -853,7 +857,7 @@ export async function statusSettings(root, { refresh }) {
   root.innerHTML = `
     <div class="crumbs"><a href="#/admin/status">Статусы</a> / настройки</div>
     ${head('Настройки статусов')}
-    <p class="note" style="font-size:15px;padding:0">Итоговый вес голоса = базовый вес × доверие аккаунта. Доверие меняется незаметно для клиента: через заданное время голос сверяется с итоговым большинством. Изменения применяются к следующему пересчёту (при новом голосе и раз в 10 минут).</p>
+    <p class="note" style="font-size:15px;padding:0">Вес голоса = базовый вес × доверие аккаунта.</p>
     <form id="cfgForm" class="grid-2">${groups.map((g) => `
       <section class="card panel stack-sm"><h3>${g}</h3>${STATUS_CONFIG_FIELDS.filter((f) => f[5] === g).map(([key, label, min, max, step]) => `
         <label class="field"><span>${label}</span><input class="input" type="number" name="${key}" min="${min}" max="${max}" step="${step}" value="${config[key]}" required></label>`).join('')}
@@ -883,23 +887,25 @@ export async function serviceVotes(box, serviceId, onDone) {
   box.innerHTML = `
     <div class="card panel stack-sm status-card">
       <div class="row-flex between" style="flex-wrap:wrap;gap:10px"><span style="display:flex;flex-direction:column;gap:4px">${healthTag(st, true)}
-        <span class="small muted">${st !== 'operational' && d.status.since ? `с ${dateTime(d.status.since)} · ` : ''}${esc(windowText(d.window))}</span></span>
+        <span class="small muted">${st !== 'operational' && d.status.since ? `с ${dateTime(d.status.since)} · ` : ''}${windowText(d.window)}</span></span>
         ${statusActions(serviceId, st)}</div>
       ${uptimeBarHTML(d.health.days, d.health.uptime30)}
     </div>
-    <div id="tVotes" style="margin-top:12px"></div>`;
+    ${d.items.length ? '<div id="tVotes" style="margin-top:12px"></div>' : ''}`;
   bindUptimeBar(box, d.health.days, d.health.uptime30);
+  if (!d.items.length) return bindStatusActions(box, onDone);
   const EXCLUDED = { new_account: 'новый аккаунт', owner: 'владелец VPN' };
   dataTable($('#tVotes', box), {
-    rows: d.items, empty: 'Голосов ещё не было', columns: [
+    rows: d.items.slice(0, 20), columns: [
       { key: 'created_at', title: 'Когда', num: true, render: (v) => dateTime(v.created_at) },
       { key: 'user_id', title: 'Кто', render: (v) => `<a href="#/admin/users/${v.user_id}">${who({ username: v.username, first_name: v.first_name, id: v.user_id })}</a>` },
       { key: 'value', title: 'Голос', render: (v) => (v.value ? tag('работает', 'good') : tag('не работает', 'warn')) },
       { key: 'network', title: 'Сеть', render: (v) => esc(NETWORK[v.network]?.name || '—') },
-      { key: 'base_weight', title: 'База', num: true, render: (v) => String(v.base_weight).replace('.', ',') },
-      { key: 'trust_score', title: 'Доверие', num: true, render: (v) => `<span style="color:${v.trust_score < 0.5 ? 'var(--bad)' : 'inherit'}">${String(Math.round(v.trust_score * 100) / 100).replace('.', ',')}</span>` },
-      { key: 'weight', title: 'Вес', num: true, render: (v) => (v.excluded ? '<span class="muted">0</span>' : String(v.weight).replace('.', ',')) },
-      { key: 'excluded', title: 'Не учтён', render: (v) => (v.excluded ? tag(EXCLUDED[v.excluded] || v.excluded) : '') }
+      { key: 'trust_score', title: 'Доверие', num: true, render: (v) => `<span style="color:${v.trust_score < 0.5 ? 'var(--bad)' : 'inherit'}">${num(v.trust_score)}</span>` },
+      // Weight = base × trust; the reason is shown only when a vote doesn't count or weighs less.
+      { key: 'weight', title: 'Вес', num: true, value: (v) => (v.excluded ? -1 : v.weight), render: (v) => (v.excluded
+        ? `<span class="muted">не учтён — ${EXCLUDED[v.excluded] || v.excluded}</span>`
+        : `${num(v.weight)}${v.base_weight < 1 ? ' <span class="muted small">без перехода</span>' : ''}`) }
     ]
   });
   return bindStatusActions(box, onDone);

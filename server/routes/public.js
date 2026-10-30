@@ -62,10 +62,11 @@ export function publicRoutes(r, { db }) {
   r.get('/api/services/:id/reviews', ({ params, query }) => {
     const id = intParam(params.id);
     const offset = Math.max(0, Number(query.offset) || 0);
+    const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
     const items = db.all(
       `SELECT r.id, r.rating, r.text, r.created_at, r.updated_at, u.first_name, u.photo_url
        FROM reviews r JOIN users u ON u.id = r.user_id
-       WHERE r.service_id = ? AND r.status = 'approved' ORDER BY r.created_at DESC LIMIT 20 OFFSET ?`, id, offset);
+       WHERE r.service_id = ? AND r.status = 'approved' ORDER BY r.created_at DESC LIMIT ? OFFSET ?`, id, limit, offset);
     const dist = db.all("SELECT rating, COUNT(*) n FROM reviews WHERE service_id = ? AND status = 'approved' GROUP BY rating", id);
     return { items, distribution: Object.fromEntries(dist.map((d) => [d.rating, d.n])) };
   });

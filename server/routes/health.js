@@ -45,6 +45,7 @@ export function healthRoutes(r, { db, config }) {
     return {
       health: serviceHealth(db, s.id),
       window: windowStats(db, s.id),
+      window_min: statusConfig(db).window_min,
       dispute: db.get("SELECT id, status, comment, state, created_at FROM status_disputes WHERE service_id = ? ORDER BY id DESC LIMIT 1", s.id) || null
     };
   });

@@ -386,7 +386,6 @@ body.sheet-open.has-main .sheet { padding-bottom: calc(84px + var(--safe-b)) }
 [aria-checked="true"] .check { opacity: 1; transform: scale(1) }
 .ok { color: var(--good); font-weight: 600 }
 .no { color: var(--text-3) }
-.flags { font-size: 18px; letter-spacing: 2px }
 .checks-dots { display: inline-flex; gap: 4px }
 .checks-dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--good) }
 .checks-dots i.f { background: var(--bad) }
@@ -405,32 +404,18 @@ body.sheet-open.has-main .sheet { padding-bottom: calc(84px + var(--safe-b)) }
 .health.bad { color: var(--bad) }
 .health.bad i { background: var(--st-outage); box-shadow: 0 0 0 3px color-mix(in srgb, var(--st-outage) 22%, transparent); animation: pulse 1.6s ease-in-out infinite }
 @keyframes pulse { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--st-outage) 10%, transparent) } }
-.status-card .health { font-size: 19px; letter-spacing: -.01em }
+.status-card .health { font-size: 17px; letter-spacing: -.01em }
 .status-card .health i { width: 10px; height: 10px }
-.uptime { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 3px; height: 34px; cursor: pointer; touch-action: pan-y; margin-top: 4px }
+.uptime { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 3px; height: 26px; cursor: pointer; touch-action: pan-y; margin-top: 4px }
 .uptime i { border-radius: 4px; background: var(--st-ok); transition: transform .3s var(--spring), opacity .2s }
 .uptime i.issues { background: var(--st-issues) }
 .uptime i.outage { background: var(--st-outage) }
 .uptime i.nodata { background: var(--well) }
 .uptime i.on { transform: scaleY(1.18) }
-.uptime-scale { display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: 8px; font-size: 12.5px; color: var(--text-3) }
-.uptime-scale > span:not(.uptime-readout) { white-space: nowrap }
-.uptime-readout { color: var(--text-2); font-weight: 600; text-align: center; font-variant-numeric: tabular-nums }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--text-3) }
-.legend span { display: inline-flex; align-items: center; gap: 5px }
-.legend i { width: 9px; height: 9px; border-radius: 3px; background: var(--st-ok) }
-.legend i.issues { background: var(--st-issues) }
-.legend i.outage { background: var(--st-outage) }
-.nets { display: flex; flex-direction: column; gap: 6px; font-size: 14px }
-.net-row { display: grid; grid-template-columns: 74px 1fr auto; gap: 10px; align-items: center }
-.net-row .split { height: 8px; border-radius: 999px; overflow: hidden; display: flex; background: var(--well) }
-.net-row .split b { background: var(--st-ok) }
-.net-row .split s { background: var(--st-issues) }
-.net-row .n { color: var(--text-3); font-size: 12.5px; white-space: nowrap; font-variant-numeric: tabular-nums }
-.vote-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
-.vote-row .btn { min-height: 48px; font-size: 15px; white-space: nowrap }
-/* Two full labels don't fit side by side on a phone: stack them. */
-@media (max-width: 460px) { .vote-row { grid-template-columns: 1fr } }
+.uptime-readout { font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums }
+/* Side by side when both labels fit, otherwise each takes a full line. */
+.vote-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px }
+.vote-row .btn { flex: 1 1 auto; font-size: 14.5px; padding: 0 12px }
 .net-pick { display: flex; flex-direction: column; gap: 8px }
 .net-pick .chips { flex-wrap: wrap }
 .verified-line { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--good); font-weight: 500 }
