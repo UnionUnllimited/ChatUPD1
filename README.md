@@ -17,28 +17,39 @@ npm run seed -- --reset       # 25 тестовых VPN, отзывы, пере�
 npm run dev                   # http://localhost:3000/?dev=100001
 ```
 
-`npm run dev` включает `ALLOW_DEV_AUTH=1`: вне Telegram приложение входит тестовым пользователем `100001` (у него роли клиента, владельца «Аврора VPN» и администратора, если `ADMIN_IDS=100001`). Другого пользователя можно выбрать параметром `?dev=<id>`. **В продакшене `ALLOW_DEV_AUTH` должен быть выключен.**
+`npm run dev` включает тестовый вход: вне Telegram приложение входит пользователем `100001` (у него роли клиента, владельца «Аврора VPN» и администратора, если `ADMIN_IDS=100001`). Другого пользователя можно выбрать параметром `?dev=<id>`. **На сервере тестовый вход всегда выключен** (`npm start`, `ALLOW_DEV_AUTH=0`).
 
 Тесты: `npm test` (подпись initData, модерация, уведомления, топ месяца, права доступа, HTTP-сценарий от заявки до публикации).
 
-## Запуск в Telegram
+## Запуск на сервере (бот + мини-апп)
 
-1. В @BotFather: `/newbot` → `linza_app_bot` (если занят — `getlinza_bot`), сохраните токен.
-2. `/newapp` → выберите бота → short name `app` → URL вашего сервера (`https://…`). Ссылка будет `t.me/linza_app_bot/app`.
-3. Заполните `.env`:
-   - `BOT_TOKEN`, `BOT_USERNAME`, `WEBAPP_URL`
-   - `BOT_WEBHOOK_URL=https://<домен>/bot/webhook` и длинный случайный `BOT_WEBHOOK_SECRET`
-   - `ADMIN_IDS` — Telegram ID администраторов через запятую
-4. Запустите за HTTPS-прокси (Caddy, nginx) или в Docker:
+Как это выглядит для пользователя: он открывает бота в Telegram, видит описание и жмёт «Старт» — бот присылает приветствие с кнопкой «Открыть Линзу»; ещё одна кнопка «Линза» всегда стоит слева от поля ввода. Мини-апп открывается внутри Telegram. Сервер нужен, чтобы разместить страницу мини-аппа (Telegram требует HTTPS) и принимать сообщения бота.
+
+**Что понадобится**
+- VPS на Ubuntu/Debian с root-доступом и **свободными портами 80 и 443**. Сервер, где на 443 уже работает VPN (Xray/Reality), не подойдёт — возьмите отдельный, хватит 1 ГБ RAM.
+- Токен бота: @BotFather → `/newbot` → `linza_app_bot` (если занят — `getlinza_bot`).
+- Ваш Telegram ID — его покажет @userinfobot.
+- Домен, направленный A-записью на IP сервера, — по желанию. Без домена скрипт возьмёт адрес вида `1-2-3-4.sslip.io`.
+
+**Установка**
 
 ```bash
-docker build -t linza .
-docker run -d --name linza -p 3000:3000 --env-file .env -v linza-data:/data linza
+git clone -b claude/linza-miniapp https://github.com/UnionUnllimited/ChatUPD1.git linza
+cd linza
+sudo bash deploy/install.sh
 ```
 
-При старте сервер сам ставит webhook и кнопку меню бота. Без публичного адреса можно запустить бота long polling'ом: `BOT_POLLING=1`, `BOT_WEBHOOK_URL` пустой.
+Скрипт поставит Docker, спросит токен, ID администраторов и домен, сам проверит токен в Telegram, получит HTTPS-сертификат (Caddy), включит webhook бота и предложит загрузить тестовые VPN. При каждом старте сервер настраивает боту описание, команды `/start` и `/help` и кнопку меню «Линза».
 
-База — один файл SQLite (`DB_PATH`), логотипы — в `UPLOADS_DIR`. Для бэкапа достаточно копировать каталог `/data`.
+Красивая ссылка `t.me/<бот>/app` (по желанию): @BotFather → `/newapp` → выбрать бота → short name `app` → URL `https://<домен>`.
+
+**Обслуживание**
+- Обновить: `git pull && sudo docker compose up -d --build`
+- Логи: `sudo docker compose logs -f app`
+- Данные (база SQLite и логотипы) лежат в Docker-томе `linza-data`; бэкап: `sudo docker compose cp app:/data ./backup`
+- Удалить тестовые VPN перед настоящим запуском: `sudo docker compose down && sudo docker volume rm linza_linza-data && sudo docker compose up -d`
+
+Без Docker: Node.js ≥ 22.13, `.env` по образцу `.env.example`, `npm start` за любым HTTPS-прокси. Без публичного адреса бот может работать long polling'ом (`BOT_POLLING=1`, `BOT_WEBHOOK_URL` пустой), но мини-апп всё равно должен открываться по HTTPS.
 
 ## Что есть в первой версии
 

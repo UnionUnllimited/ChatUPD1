@@ -22,7 +22,14 @@ export function createBot(config, log = console) {
     return json.result;
   }
 
-  const openButton = (text, startParam) => ({ inline_keyboard: [[{ text, url: appLink(startParam) }]] });
+  // A web_app button opens the Mini App straight from the chat (no /newapp needed);
+  // the start parameter rides in the query string, where the client also looks for it.
+  const openButton = (text, startParam) => {
+    if (!config.webAppUrl) return { inline_keyboard: [[{ text, url: appLink(startParam) }]] };
+    const url = new URL(config.webAppUrl);
+    if (startParam) url.searchParams.set('startapp', startParam);
+    return { inline_keyboard: [[{ text, web_app: { url: url.toString() } }]] };
+  };
 
   return {
     enabled,
@@ -38,11 +45,20 @@ export function createBot(config, log = console) {
       });
     },
 
+    // The bot is the front door: profile texts, commands and the «Линза» menu button
+    // that opens the Mini App are configured on every start.
     async setup() {
       if (!enabled) return;
+      const soft = (method, body) => api(method, body).catch((e) => log.warn(`${method} failed:`, e.message));
+      await soft('setMyDescription', {
+        description: 'Линза — честный каталог VPN в Telegram.\n\nСравнивайте цены, протоколы и ручные проверки VPN-сервисов, ' +
+          'сохраняйте избранное и узнавайте о скидках первыми. Рейтинг строится по отзывам, переходам и проверкам и не продаётся.\n\n' +
+          'Нажмите «Старт», чтобы открыть каталог.'
+      });
+      await soft('setMyShortDescription', { short_description: 'Честный каталог VPN: цены, проверки, отзывы и топ месяца.' });
+      await soft('setMyCommands', { commands: [{ command: 'start', description: 'Открыть Линзу' }, { command: 'help', description: 'Что умеет бот' }] });
       if (config.webAppUrl) {
-        await api('setChatMenuButton', { menu_button: { type: 'web_app', text: 'Линза', web_app: { url: config.webAppUrl } } })
-          .catch((e) => log.warn('setChatMenuButton failed:', e.message));
+        await soft('setChatMenuButton', { menu_button: { type: 'web_app', text: 'Линза', web_app: { url: config.webAppUrl } } });
       }
       if (config.webhookUrl) {
         await api('setWebhook', { url: config.webhookUrl, secret_token: config.webhookSecret || undefined, allowed_updates: ['message', 'my_chat_member'] });

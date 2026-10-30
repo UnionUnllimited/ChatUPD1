@@ -1,0 +1,32 @@
+# Линза on a single server: the app behind Caddy, which obtains and renews
+# the HTTPS certificate for $DOMAIN automatically (Telegram requires HTTPS).
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "3000"
+      DB_PATH: /data/linza.db
+      UPLOADS_DIR: /data/uploads
+    volumes:
+      - linza-data:/data
+
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  linza-data:
+  caddy-data:
+  caddy-config:

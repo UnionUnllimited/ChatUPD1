@@ -48,6 +48,9 @@ function parentOf(path) {
 }
 
 /* ---------------- Router with its own history index ---------------- */
+// Telegram passes launch params in the URL hash (#tgWebAppData=…). The SDK has already
+// read them, and the hash belongs to the router, so drop them before routing.
+if (/^#tgWebApp/.test(location.hash)) history.replaceState(history.state, '', location.pathname + location.search);
 let idx = history.state?.idx ?? 0;
 let cleanup = null;
 let renderSeq = 0;
