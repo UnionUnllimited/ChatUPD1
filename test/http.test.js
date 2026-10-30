@@ -88,6 +88,12 @@ test('static files and SPA fallback', async () => {
   // Files outside public/ are never served; unknown paths get the SPA shell.
   const leak = await (await fetch(base + '/%2e%2e/package.json')).text();
   assert.doesNotMatch(leak, /"scripts"/);
+  // Code always revalidates, so a deploy is picked up on the next open; unchanged files cost a 304.
+  const js = await fetch(base + '/js/app.js');
+  assert.equal(js.headers.get('cache-control'), 'no-cache');
+  const again = await fetch(base + '/js/app.js', { headers: { 'if-none-match': js.headers.get('etag') } });
+  assert.equal(again.status, 304);
+  assert.equal((await fetch(base + '/img/logo.svg')).headers.get('cache-control'), 'public, max-age=300');
 });
 
 test('admin panel page, redirect and CSV export', async () => {

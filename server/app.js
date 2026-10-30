@@ -1,6 +1,6 @@
-import { createReadStream, statSync } from 'node:fs';
+import { createReadStream, readFileSync, statSync } from 'node:fs';
 import { join, normalize, extname, resolve } from 'node:path';
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { ROOT } from './config.js';
 import { authenticate } from './auth.js';
 import { createRouter, HttpError, RawResponse } from './lib/http.js';
@@ -56,7 +56,22 @@ function readBody(req) {
   });
 }
 
-function serveFile(res, root, relPath, { fallback, cache } = {}) {
+// Code and pages revalidate on every load (a cheap 304 by ETag): a deploy reaches everyone
+// at once, and Telegram's webview never mixes old and new modules. Images are short-cached.
+const REVALIDATE = new Set(['.html', '.js', '.css', '.json', '.webmanifest']);
+// ETag from the content (not only mtime, which a Docker build may not keep), hashed once per version.
+const etags = new Map();
+function etagOf(file, st) {
+  const key = `${file}|${st.size}|${st.mtimeMs}`;
+  let tag = etags.get(key);
+  if (!tag) {
+    tag = `W/"${createHash('sha1').update(readFileSync(file)).digest('base64url').slice(0, 16)}"`;
+    etags.set(key, tag);
+  }
+  return tag;
+}
+
+function serveFile(res, root, relPath, { fallback, cache, ifNoneMatch } = {}) {
   const file = normalize(join(root, relPath));
   if (!file.startsWith(root)) return send(res, 403, { error: 'forbidden' });
   let st;
@@ -68,20 +83,26 @@ function serveFile(res, root, relPath, { fallback, cache } = {}) {
       res.writeHead(301, { location: `${relPath.split('/').filter(Boolean).pop()}/`, ...SECURITY_HEADERS });
       return res.end();
     }
-    return serveFile(res, root, join(relPath, 'index.html'), { fallback, cache: false });
+    return serveFile(res, root, join(relPath, 'index.html'), { fallback, cache: false, ifNoneMatch });
   }
   if (!st || !st.isFile()) {
-    if (fallback) return serveFile(res, root, fallback, { cache: false });
+    if (fallback) return serveFile(res, root, fallback, { cache: false, ifNoneMatch });
     return send(res, 404, { error: 'Не найдено' });
   }
   const ext = extname(file);
-  res.writeHead(200, {
+  const etag = etagOf(file, st);
+  const headers = {
     'content-type': MIME[ext] || 'application/octet-stream',
-    'content-length': st.size,
-    // HTML always revalidates so a deploy reaches users right away; assets are short-cached.
-    'cache-control': ext === '.html' || cache === false ? 'no-cache' : cache || 'public, max-age=300',
+    'cache-control': typeof cache === 'string' ? cache : cache === false || REVALIDATE.has(ext) ? 'no-cache' : 'public, max-age=300',
+    etag,
+    'last-modified': st.mtime.toUTCString(),
     ...SECURITY_HEADERS
-  });
+  };
+  if (ifNoneMatch && ifNoneMatch.split(/\s*,\s*/).includes(etag)) {
+    res.writeHead(304, headers);
+    return res.end();
+  }
+  res.writeHead(200, { ...headers, 'content-length': st.size });
   createReadStream(file).pipe(res);
 }
 
@@ -125,10 +146,11 @@ export function createApp({ db, config, bot, log = console }) {
         if (out instanceof RawResponse) return send(res, 200, out.body, out.headers);
         return send(res, 200, out ?? { ok: true });
       }
-      if (path.startsWith('/uploads/')) return serveFile(res, config.uploadsDir, path.slice('/uploads/'.length), { cache: 'public, max-age=31536000, immutable' });
+      const ifNoneMatch = req.headers['if-none-match'];
+      if (path.startsWith('/uploads/')) return serveFile(res, config.uploadsDir, path.slice('/uploads/'.length), { cache: 'public, max-age=31536000, immutable', ifNoneMatch });
       if (req.method !== 'GET' && req.method !== 'HEAD') throw new HttpError(405, 'Method not allowed');
       // SPA: unknown paths fall back to index.html.
-      return serveFile(res, PUBLIC_DIR, path === '/' ? 'index.html' : decodeURIComponent(path), { fallback: 'index.html' });
+      return serveFile(res, PUBLIC_DIR, path === '/' ? 'index.html' : decodeURIComponent(path), { fallback: 'index.html', ifNoneMatch });
     } catch (e) {
       if (e instanceof HttpError) return send(res, e.status, { error: e.message, code: e.code });
       log.error(req.method, path, e);
