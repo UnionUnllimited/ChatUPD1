@@ -80,7 +80,7 @@ export async function myReviews(root) {
     }
     box.innerHTML = items.map((r) => `
       <article class="card review" data-id="${r.id}">
-        <div class="row-flex">${logoHTML(r, 'sm')}<button type="button" class="grow" style="font-weight:600;text-align:left" data-open="${r.service_id}">${esc(r.name)}</button>${statusTag(r.status)}</div>
+        <div class="row-flex">${logoHTML(r, 'sm')}<button type="button" class="grow tap" style="font-weight:600;text-align:left" data-open="${r.service_id}">${esc(r.name)}</button>${statusTag(r.status)}</div>
         ${stars(r.rating)}<p>${esc(r.text)}</p>
         ${r.status === 'rejected' && r.reject_reason ? `<p class="small" style="color:var(--bad)">Причина: ${esc(r.reject_reason)}</p>` : ''}
         <div class="row-flex between"><span class="small muted">${dateShort(r.updated_at)}</span>
@@ -104,7 +104,7 @@ export async function history(root) {
   root.innerHTML = `<div class="topbar"><h1 class="title">История переходов</h1></div>
     ${items.length ? `<div class="card group">${items.map((h) => `
       <div class="row">
-        <button type="button" class="row-flex grow" style="text-align:left" data-open="${h.service_id}">${logoHTML(h, 'sm')}
+        <button type="button" class="row-flex grow tap" style="text-align:left" data-open="${h.service_id}">${logoHTML(h, 'sm')}
           <span class="grow" style="display:flex;flex-direction:column"><span style="font-weight:600">${esc(h.name)}</span>
           <span class="small muted">${dateTime(h.last_at)}${h.times > 1 ? ` · ${h.times} ${plural(h.times, 'переход', 'перехода', 'переходов')}` : ''}</span></span></button>
         ${h.review_status ? statusTag(h.review_status) : `<button type="button" class="lgb btn sm press" data-review="${h.service_id}" data-name="${esc(h.name)}">Отзыв</button>`}

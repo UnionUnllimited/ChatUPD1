@@ -192,10 +192,12 @@ export async function adminChecks(root) {
       <article class="card panel stack-sm">
         <div class="row-flex">${logoHTML(s, 'sm')}<span class="grow" style="display:flex;flex-direction:column"><b>${esc(s.name)}</b>
           <span class="small ${stale ? '' : 'muted'}" style="${stale ? 'color:var(--warn)' : ''}">${s.last_at ? `${s.last_passed ? '✓' : '✕'} ${dateShort(s.last_at)}` : 'Не проверялся'} · за 30 дней ${s.passed30}/${s.n30}</span></span>
-          <button type="button" class="link-btn" data-hist="${s.id}" data-name="${esc(s.name)}">История</button></div>
-        <div class="row-flex">
-          <button type="button" class="fill btn sm press" data-link="${esc(s.bot_url)}">${icon.bot} Бот</button>
-          <span class="grow"></span>
+          </div>
+        <div class="row-flex between">
+          <button type="button" class="link-btn" data-link="${esc(s.bot_url)}">${icon.bot} Открыть бот</button>
+          <button type="button" class="link-btn" data-hist="${s.id}" data-name="${esc(s.name)}">История</button>
+        </div>
+        <div class="grid2">
           <button type="button" class="fill btn sm press danger" data-fail="${s.id}">✕ Не работает</button>
           <button type="button" class="lgb btn sm press" data-pass="${s.id}">✓ Работает</button>
         </div>

@@ -250,8 +250,8 @@ export function verifiedHTML(ts) {
   return ts ? `<span class="ok">${icon.shield} Проверено ${dateShort(ts)}</span>` : '<span>Ещё не проверялся</span>';
 }
 
-// The 3–4 most useful facts for a list card.
-export function keyBadges(s) {
+// The 3–4 most useful facts for a list card (the top badge counts towards the limit).
+export function keyBadges(s, limit = 4) {
   const out = [];
   if (s.promo) out.push(`<span class="tag">${s.promo.discount_percent ? `−${s.promo.discount_percent}%` : 'Акция'}</span>`);
   if (s.trial) out.push(`<span class="tag neutral">Триал${s.trial_days ? ` ${s.trial_days} ${plural(s.trial_days, 'день', 'дня', 'дней')}` : ''}</span>`);
@@ -260,7 +260,7 @@ export function keyBadges(s) {
   if (s.whitelist_bypass) out.push('<span class="tag neutral">Обход белых списков</span>');
   if (out.length < 4) out.push(`<span class="tag neutral">до ${s.devices} ${plural(s.devices, 'устройства', 'устройств', 'устройств')}</span>`);
   if (out.length < 4 && s.protocols[0]) out.push(`<span class="tag neutral">${esc(PROTOCOL[s.protocols[0]]?.name || s.protocols[0])}</span>`);
-  return out.slice(0, 4).join('');
+  return out.slice(0, limit).join('');
 }
 
 export function vpnCardHTML(s, { fav = false, cmp = false } = {}) {
@@ -277,7 +277,7 @@ export function vpnCardHTML(s, { fav = false, cmp = false } = {}) {
       </div>
       <button type="button" class="fill circle fav press" data-fav="${s.id}" aria-pressed="${fav}" aria-label="${fav ? 'Убрать из избранного' : 'В избранное'}">${icon.heart(fav)}</button>
     </div>
-    <div class="badges">${topTag(s.top)}${keyBadges(s)}</div>
+    <div class="badges">${topTag(s.top)}${keyBadges(s, s.top ? 3 : 4)}</div>
     <div class="vpn-foot">
       <div class="stack-sm price" style="gap:6px"><span class="price-line"><span class="from">от</span><b>${rub(s.min_monthly)}</b><small>/мес</small></span>${s.market ? `<span>${marketTag(s.market)}</span>` : ''}</div>
       <button type="button" class="${cmp ? 'sel' : 'fill'} btn sm press cmp-btn" data-cmp="${s.id}" aria-pressed="${cmp}">${icon.compare(cmp)}${cmp ? 'В сравнении' : 'Сравнить'}</button>

@@ -60,7 +60,7 @@ export default async function compare(root) {
             <th scope="col">
               <div class="stack-sm">
                 <div class="row-flex between">${logoHTML(s, 'sm')}<button type="button" class="fill circle press" data-remove="${s.id}" aria-label="Убрать ${esc(s.name)}">${icon.x}</button></div>
-                <button type="button" style="text-align:left;font-weight:700" data-open="${s.id}">${esc(s.name)}</button>
+                <button type="button" class="tap" style="text-align:left;font-weight:700" data-open="${s.id}">${esc(s.name)}</button>
               </div>
             </th>`).join('')}</tr></thead>
           <tbody>

@@ -216,6 +216,7 @@ img { display: block; max-width: 100% }
 .muted { color: var(--text-3) }
 .small { font-size: 13px }
 .center { text-align: center }
+.tap { min-height: 44px; display: flex; align-items: center }
 
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 22px; letter-spacing: -.02em; color: var(--text) }
@@ -405,7 +406,7 @@ textarea.input { min-height: 104px; resize: vertical; line-height: 1.45 }
 .sw:checked:active::after { left: 19px }
 
 /* range */
-.range { width: 100%; -webkit-appearance: none; appearance: none; height: 30px; background: transparent; margin: 4px 0 0 }
+.range { width: 100%; -webkit-appearance: none; appearance: none; height: 44px; background: transparent; margin: 0 }
 .range::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: linear-gradient(90deg, var(--accent) var(--p, 50%), rgba(120, 120, 128, .22) var(--p, 50%)) }
 .range::-webkit-slider-thumb { -webkit-appearance: none; width: 34px; height: 26px; border-radius: 999px; margin-top: -10px; background: radial-gradient(130% 100% at 50% 0%, #fff, rgba(255, 255, 255, .86) 75%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .7), 0 0 0 .5px rgba(0, 0, 0, .06), 0 3px 8px rgba(0, 0, 0, .22); transition: transform .4s var(--spring-bouncy) }
 .range:active::-webkit-slider-thumb { transform: scale(1.12) }
