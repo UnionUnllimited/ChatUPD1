@@ -1,5 +1,6 @@
 # Линза on a single server: the app behind Caddy, which obtains and renews
 # the HTTPS certificate for $DOMAIN automatically (Telegram requires HTTPS).
+# Only TCP 443 is needed; port 80 may stay with other services.
 services:
   app:
     build: .
@@ -17,7 +18,6 @@ services:
     restart: unless-stopped
     depends_on: [app]
     ports:
-      - "80:80"
       - "443:443"
     environment:
       DOMAIN: ${DOMAIN:?set DOMAIN in .env}

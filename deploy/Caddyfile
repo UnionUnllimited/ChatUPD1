@@ -1,4 +1,18 @@
+{
+	# Only TCP 443 is published: certificates come through the TLS-ALPN challenge,
+	# so port 80 (and UDP 443, e.g. Hysteria) stay with whatever already uses them.
+	auto_https disable_redirects
+	servers {
+		protocols h1 h2
+	}
+}
+
 {$DOMAIN} {
+	tls {
+		issuer acme {
+			disable_http_challenge
+		}
+	}
 	encode zstd gzip
 	reverse_proxy app:3000
 }

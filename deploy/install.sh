@@ -17,13 +17,18 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 docker compose version >/dev/null 2>&1 || die "Нужен Docker Compose v2 (docker compose)."
 
-# Caddy needs ports 80 and 443 for the certificate and HTTPS. On VPN servers 443
-# is often taken by Xray/VLESS — then use another server for the app.
-for port in 80 443; do
-  if ss -ltnH "( sport = :$port )" 2>/dev/null | grep -q . && ! docker compose ps --status running 2>/dev/null | grep -q caddy; then
-    die "Порт $port уже занят: $(ss -ltnpH "( sport = :$port )" | head -1). Освободите его или поставьте Линзу на другой сервер."
-  fi
-done
+# Caddy needs TCP 443 for HTTPS and the certificate (port 80 is not used).
+# On VPN servers 443 is often taken by Xray/Reality or a panel's proxy.
+if ss -ltnH "( sport = :443 )" 2>/dev/null | grep -q . && ! docker compose ps --status running 2>/dev/null | grep -q caddy; then
+  holder=$(docker ps --filter publish=443 --format '{{.Names}} (образ {{.Image}})' 2>/dev/null | head -1)
+  [ -n "$holder" ] || holder=$(ss -ltnpH "( sport = :443 )" | sed -n 's/.*users:(("\([^"]*\)".*/\1/p' | head -1)
+  echo
+  echo "Порт 443 занят: ${holder:-неизвестный процесс}."
+  echo "Пришлите вывод этих команд — подключу Линзу через уже работающий там прокси:"
+  echo "  docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Ports}}'"
+  echo "  ss -ltnp | grep -E ':(80|443|8443) '"
+  die "Порт 443 занят — установка остановлена, ничего не изменено."
+fi
 
 if [ -f .env ]; then
   say "Нашёл .env — использую его (удалите файл, чтобы ответить на вопросы заново)"
@@ -57,8 +62,8 @@ fi
 set -a; . ./.env; set +a
 
 if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
-  say "Открываю порты 80 и 443 в ufw"
-  ufw allow 80/tcp >/dev/null && ufw allow 443/tcp >/dev/null
+  say "Открываю порт 443 в ufw"
+  ufw allow 443/tcp >/dev/null
 fi
 
 say "Собираю приложение"
