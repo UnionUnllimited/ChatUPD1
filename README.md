@@ -58,6 +58,7 @@ sudo bash deploy/install.sh
 
 **Обслуживание**
 - Обновить: `git pull && sudo docker compose up -d --build`
+- Перейти на свой домен: в DNS домена поставьте A-запись `@` → IP сервера (лишние A и AAAA для `@` удалите), затем `sudo bash deploy/set-domain.sh linza-app.ru`. Скрипт проверит DNS, добавит сайт в Caddy, дождётся сертификата и только после этого переключит бота и мини-апп; при ошибке всё остаётся как было, старый адрес продолжает работать. После — @BotFather → `/myapps` → Edit Web App URL.
 - Логи: `sudo docker compose logs -f app`
 - Данные (база SQLite и логотипы) лежат в Docker-томе `linza-data`; бэкап: `sudo docker compose cp app:/data ./backup`
 - Удалить тестовые VPN перед настоящим запуском: админ-панель → Настройки → «Удалить тестовые данные» (реальные пользователи остаются)
