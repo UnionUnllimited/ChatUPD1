@@ -10,7 +10,7 @@ export function topExplainer(weights = { rating: 0.4, clients: 0.3, stability: 0
     <div class="card group">
       <div class="row"><span><b>${pct(weights.rating)}</b> · Оценки</span><span class="v small">средняя оценка отзывов за месяц</span></div>
       <div class="row"><span><b>${pct(weights.clients)}</b> · Клиенты</span><span class="v small">уникальные переходы в бот через Линзу</span></div>
-      <div class="row"><span><b>${pct(weights.stability)}</b> · Стабильность</span><span class="v small">доля пройденных ручных проверок</span></div>
+      <div class="row"><span><b>${pct(weights.stability)}</b> · Стабильность</span><span class="v small">доля времени без сбоев по сигналам клиентов</span></div>
     </div>
     <p class="note">Отзывы оставляют только те, кто перешёл в бот сервиса через Линзу, и каждый отзыв проходит модерацию. Чтобы один отзыв не решал исход месяца, средняя оценка сглаживается.</p>`);
 }

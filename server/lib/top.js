@@ -1,4 +1,5 @@
 import { now, periodRange } from './time.js';
+import { incidentIntervals, uptimeShare } from './health.js';
 import { badRequest } from './http.js';
 import { invalidate } from './catalog.js';
 import { audit } from './moderation.js';
@@ -23,16 +24,18 @@ export function normalizeWeights(w) {
 // Composite score for a month (all components in 0..1, score in 0..100):
 //   rating    — Bayesian-smoothed average of approved reviews written that month, / 5
 //   clients   — unique Telegram users who went to the bot that month, / best in catalog
-//   stability — share of passed manual checks that month
+//   stability — share of the month without «Есть сообщения о сбоях» / «Массовый сбой»
+//               (from client signals), counted from publication if that came later
 export function computeTop(db, period, weights = db.setting('top_weights')) {
   const [start, end] = periodRange(period);
   const prior = db.setting('top_rating_prior');
   const services = db.all(
-    "SELECT id, name, logo_url FROM services WHERE status = 'published' AND hidden = 0 AND published_at < ?", end);
+    "SELECT id, name, logo_url, published_at FROM services WHERE status = 'published' AND hidden = 0 AND published_at < ?", end);
   const map = (sql) => new Map(db.all(sql, start, end).map((r) => [r.service_id, r]));
   const ratings = map("SELECT service_id, AVG(rating) avg, COUNT(*) n FROM reviews WHERE status = 'approved' AND created_at >= ? AND created_at < ? GROUP BY service_id");
   const clients = map('SELECT service_id, COUNT(DISTINCT user_id) n FROM clicks WHERE created_at >= ? AND created_at < ? GROUP BY service_id');
-  const checks = map('SELECT service_id, SUM(passed) passed, COUNT(*) n FROM service_checks WHERE checked_at >= ? AND checked_at < ? GROUP BY service_id');
+  const spanEnd = Math.min(end, now());
+  const incidents = incidentIntervals(db, start, spanEnd);
 
   const rated = [...ratings.values()];
   const mean = rated.length ? rated.reduce((s, r) => s + r.avg * r.n, 0) / rated.reduce((s, r) => s + r.n, 0) : 4;
@@ -41,10 +44,11 @@ export function computeTop(db, period, weights = db.setting('top_weights')) {
   const rows = services.map((s) => {
     const r = ratings.get(s.id);
     const c = clients.get(s.id);
-    const k = checks.get(s.id);
+    const spanStart = Math.max(start, s.published_at || start);
+    const downMin = Math.round((incidents.get(s.id) || []).reduce((a, i) => a + Math.min(i.end, spanEnd) - Math.max(i.start, spanStart), 0) / 60_000);
     const ratingComp = r ? (r.avg * r.n + mean * prior) / (r.n + prior) / 5 : 0;
     const clientsComp = c ? c.n / maxClients : 0;
-    const stabilityComp = k ? k.passed / k.n : 0;
+    const stabilityComp = uptimeShare(incidents.get(s.id), spanStart, spanEnd);
     const score = 100 * (weights.rating * ratingComp + weights.clients * clientsComp + weights.stability * stabilityComp);
     return {
       service_id: s.id,
@@ -58,8 +62,8 @@ export function computeTop(db, period, weights = db.setting('top_weights')) {
         clients: Math.round(clientsComp * 1000) / 1000,
         clients_n: c ? c.n : 0,
         stability: Math.round(stabilityComp * 1000) / 1000,
-        checks_passed: k ? k.passed : 0,
-        checks_n: k ? k.n : 0
+        uptime_pct: Math.round(stabilityComp * 1000) / 10,
+        downtime_min: Math.max(0, downMin)
       }
     };
   });

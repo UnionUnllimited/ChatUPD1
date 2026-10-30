@@ -1,6 +1,7 @@
 import { snapshot, parseFilters, filterItems, toListItem } from '../lib/catalog.js';
 import { latestTop, topFor, topArchive } from '../lib/top.js';
 import { canReview } from '../lib/moderation.js';
+import { serviceHealth } from '../lib/health.js';
 import { notFound, intParam, badRequest } from '../lib/http.js';
 import { isPeriod, now } from '../lib/time.js';
 
@@ -55,7 +56,7 @@ export function publicRoutes(r, { db }) {
       can_review: canReview(db, user.id, id),
       review: db.get('SELECT id, rating, text, status, reject_reason, updated_at FROM reviews WHERE user_id = ? AND service_id = ?', user.id, id) || null
     } : null;
-    return { ...card, checks: lastChecks, me };
+    return { ...card, checks: lastChecks, me, health: serviceHealth(db, id, user?.id ?? null) };
   });
 
   r.get('/api/services/:id/reviews', ({ params, query }) => {

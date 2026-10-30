@@ -85,7 +85,9 @@ export function panelRoutes(r, { db, config }) {
         promos: n("SELECT COUNT(*) n FROM promotions WHERE status = 'pending'"),
         reviews: n("SELECT COUNT(*) n FROM reviews WHERE status = 'pending'"),
         unchecked: n(`SELECT COUNT(*) n FROM services s WHERE s.status = 'published' AND s.hidden = 0
-                      AND NOT EXISTS (SELECT 1 FROM service_checks c WHERE c.service_id = s.id AND c.checked_at > ?)`, ts - 14 * DAY)
+                      AND NOT EXISTS (SELECT 1 FROM service_checks c WHERE c.service_id = s.id AND c.checked_at > ?)`, ts - 14 * DAY),
+        incidents: n("SELECT COUNT(*) n FROM service_status WHERE status != 'operational'"),
+        status_alerts: n("SELECT COUNT(*) n FROM status_disputes WHERE state = 'open'") + n("SELECT COUNT(*) n FROM status_anomalies WHERE state = 'open'")
       },
       outbox: {
         queued: n("SELECT COUNT(*) n FROM notifications WHERE status = 'queued'"),

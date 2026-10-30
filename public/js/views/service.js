@@ -1,11 +1,63 @@
-import { get, post, api } from '../api.js';
+import { get, post, api, patch } from '../api.js';
 import { store, trackView } from '../store.js';
 import { haptic, openLink, setMain, copyText } from '../tg.js';
 import {
   $, $$, esc, rub, fmt, plural, icon, logoHTML, marketTag, topTag, ratingStr, dateLong, dateShort, stars,
-  openSheet, closeSheet, setSheetMain, toast, toastError, monthsWord, paymentsText
+  openSheet, closeSheet, setSheetMain, toast, toastError, monthsWord, paymentsText,
+  ago, healthTag, uptimeBarHTML, bindUptimeBar
 } from '../ui.js';
-import { PROTOCOL, COUNTRY, PLATFORM, TARIFF_MONTHS, MODERATION_STATUS } from '../dict.js';
+import { PROTOCOL, COUNTRY, PLATFORM, TARIFF_MONTHS, MODERATION_STATUS, NETWORKS, NETWORK } from '../dict.js';
+
+const timeMsk = (ts) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' });
+
+// Status from client signals + the two one-tap votes. Re-rendered after each vote.
+function renderStatus(box, h, verifiedAt, serviceId) {
+  const mine = h.my_vote;
+  box.innerHTML = `
+    <div class="row-flex between" style="align-items:flex-start">
+      <span style="display:flex;flex-direction:column;gap:4px">${healthTag(h.status, true)}
+        <span class="small muted">${h.status !== 'operational' && h.since ? `с ${timeMsk(h.since)} · ` : ''}${h.last_signal_at ? `последний сигнал ${ago(h.last_signal_at)}` : 'сигналов от клиентов пока нет'}</span></span>
+    </div>
+    ${uptimeBarHTML(h.days, h.uptime30)}
+    <div class="legend"><span><i></i>без сбоев</span><span><i class="issues"></i>сообщения о сбоях</span><span><i class="outage"></i>массовый сбой</span></div>
+    ${h.networks ? `<div class="nets" style="margin-top:6px"><span class="small muted">По сетям за ${h.networks.hours} ч</span>${h.networks.items.map((n) => {
+      const total = n.up + n.down;
+      return `<div class="net-row"><span>${esc(NETWORK[n.network]?.name || n.network)}</span><span class="split"><b style="width:${(n.up / total) * 100}%"></b><s style="width:${(n.down / total) * 100}%"></s></span><span class="n">работает у ${n.up} · сбои у ${n.down}</span></div>`;
+    }).join('')}</div>` : ''}
+    <p class="label" style="margin:10px 0 0">Как у вас сейчас?</p>
+    <div class="vote-row">
+      <button type="button" class="${mine?.value === 'up' ? 'sel' : 'fill'} btn press" data-vote="up" aria-pressed="${mine?.value === 'up'}">✓ Работает у меня</button>
+      <button type="button" class="${mine?.value === 'down' ? 'sel' : 'fill'} btn press" data-vote="down" aria-pressed="${mine?.value === 'down'}">✕ Не работает у меня</button>
+    </div>
+    <div class="net-pick" id="netPick" hidden>
+      <div class="row-flex between"><span class="small muted">Где проверяли? Можно пропустить</span><button type="button" class="fill circle press" id="netClose" aria-label="Пропустить">${icon.x}</button></div>
+      <div class="chips">${NETWORKS.map((n) => `<button type="button" class="${mine?.network === n.id ? 'sel' : 'fill'} chip press" data-net="${n.id}">${n.name}</button>`).join('')}</div>
+    </div>
+    ${mine ? `<span class="small muted">Ваша отметка: ${mine.value === 'up' ? '«Работает у меня»' : '«Не работает у меня»'}${mine.network ? `, ${esc(NETWORK[mine.network]?.name || '')}` : ''} · ${ago(mine.created_at)}</span>` : ''}
+    ${verifiedAt ? `<span class="verified-line">${icon.shield} Проверено администратором · ${dateLong(verifiedAt)}</span>` : ''}`;
+  bindUptimeBar(box, h.days, h.uptime30);
+
+  box.querySelectorAll('[data-vote]').forEach((b) => b.addEventListener('click', async () => {
+    if (!store.me) { toast('Отмечать статус можно в Линзе внутри Telegram'); return; }
+    haptic.impact('medium');
+    try {
+      const r = await post(`/api/services/${serviceId}/vote`, { value: b.dataset.vote });
+      renderStatus(box, r.health, verifiedAt, serviceId);
+      if (r.repeated) { toast('Ваша отметка уже учтена'); return; }
+      haptic.notify('success');
+      toast('Спасибо! Это помогает другим');
+      $('#netPick', box).hidden = false;
+    } catch (e) { toastError(e); }
+  }));
+  $('#netClose', box).addEventListener('click', () => { haptic.select(); $('#netPick', box).hidden = true; });
+  box.querySelectorAll('[data-net]').forEach((b) => b.addEventListener('click', async () => {
+    haptic.select();
+    try {
+      const r = await patch(`/api/services/${serviceId}/vote`, { network: b.dataset.net });
+      renderStatus(box, r.health, verifiedAt, serviceId);
+    } catch (e) { toastError(e); }
+  }));
+}
 
 export function goToBot(s, source = 'card') {
   haptic.impact('medium');
@@ -88,14 +140,7 @@ export default async function service(root, { params }) {
 
     <button type="button" class="cta-bot press" id="goBot">${icon.bot}<span>Перейти в бот<small>${esc(s.bot_url.replace('https://t.me/', '@').split('?')[0])} · оплата и подключение там</small></span></button>
 
-    <div class="callout ${verified ? '' : 'bad'}" style="display:flex;gap:10px;align-items:flex-start">
-      <span style="color:${verified ? 'var(--good)' : 'var(--text-3)'};margin-top:2px">${icon.shield}</span>
-      <span class="grow">${verified
-        ? `<b>Проверено администратором</b><br>Последняя ручная проверка — ${dateLong(verified)}`
-        : '<b>Ещё не проверялся</b><br>Администратор пока не подтверждал работу этого сервиса вручную'}
-        ${s.checks.length ? `<span style="display:flex;align-items:center;gap:8px;margin-top:8px"><span class="checks-dots" aria-label="Последние проверки">${s.checks.slice().reverse().map((c) => `<i class="${c.passed ? '' : 'f'}" title="${dateShort(c.checked_at)}"></i>`).join('')}</span><span class="small muted">${s.checks.filter((c) => c.passed).length} из ${s.checks.length} последних проверок</span></span>` : ''}
-      </span>
-    </div>
+    <section class="card panel stack-sm status-card" id="statusBox"></section>
 
     ${s.promo ? `
     <div class="card panel stack-sm">
@@ -138,6 +183,8 @@ export default async function service(root, { params }) {
       <div id="myReview"></div>
       <div id="reviewsList" class="stack"></div>
     </section>`;
+
+  renderStatus($('#statusBox', root), s.health, verified, id);
 
   $$('[data-plan]', root).forEach((b) => b.addEventListener('click', () => {
     haptic.select();

@@ -230,6 +230,69 @@ CREATE TABLE IF NOT EXISTS admin_sessions (
   user_agent TEXT
 );
 
+-- Service health from client signals («Работает у меня» / «Не работает у меня»).
+-- One row per account and service; a repeat within the cooldown replaces it.
+CREATE TABLE IF NOT EXISTS status_votes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+  value INTEGER NOT NULL,                 -- 1 = works for me, 0 = does not work for me
+  network TEXT,                           -- wifi | mts | beeline | megafon | tele2 (optional)
+  base_weight REAL NOT NULL,              -- 1 after a click-through to this VPN's bot, else 0.3 (settings)
+  excluded TEXT,                          -- never counted: new_account | owner; NULL = counted
+  created_at INTEGER NOT NULL,
+  trust_checked_at INTEGER                -- when it was compared with the outcome (trust_score update)
+);
+CREATE INDEX IF NOT EXISTS status_votes_service_time ON status_votes(service_id, created_at);
+CREATE INDEX IF NOT EXISTS status_votes_user_time ON status_votes(user_id, created_at);
+CREATE INDEX IF NOT EXISTS status_votes_trust ON status_votes(trust_checked_at, created_at);
+
+-- Current status per service; no row means "operational".
+CREATE TABLE IF NOT EXISTS service_status (
+  service_id INTEGER PRIMARY KEY REFERENCES services(id) ON DELETE CASCADE,
+  status TEXT NOT NULL,                   -- operational | issues | outage
+  since INTEGER NOT NULL,
+  cleared_at INTEGER,                     -- admin cleared the status: earlier votes no longer count
+  confirmed_by INTEGER,
+  confirmed_at INTEGER,
+  updated_at INTEGER NOT NULL
+);
+
+-- Every status change; incident intervals (availability bar, monthly top) are derived from it.
+CREATE TABLE IF NOT EXISTS status_changes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+  status TEXT NOT NULL,
+  changed_at INTEGER NOT NULL,
+  reason TEXT NOT NULL,                   -- votes | recovered | timeout | admin_clear
+  admin_id INTEGER
+);
+CREATE INDEX IF NOT EXISTS status_changes_service_time ON status_changes(service_id, changed_at);
+
+-- Owner disputes a status; anomalies are raised automatically. Both reach admins via the bot.
+CREATE TABLE IF NOT EXISTS status_disputes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+  owner_id INTEGER NOT NULL REFERENCES users(id),
+  status TEXT NOT NULL,                   -- the disputed status
+  comment TEXT,
+  state TEXT NOT NULL DEFAULT 'open',     -- open | cleared | confirmed
+  created_at INTEGER NOT NULL,
+  resolved_by INTEGER,
+  resolved_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS status_anomalies (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,                     -- low_trust | spike
+  details TEXT,
+  state TEXT NOT NULL DEFAULT 'open',     -- open | cleared | confirmed
+  created_at INTEGER NOT NULL,
+  resolved_by INTEGER,
+  resolved_at INTEGER
+);
+
 -- Reserved for monetisation (unused in v1). Paid placements are rendered apart from
 -- the ranking with the "Реклама" label and never affect it.
 CREATE TABLE IF NOT EXISTS ad_placements (
@@ -264,8 +327,45 @@ export const DEFAULT_SETTINGS = {
   top_rating_prior: 3,
   // Market label thresholds relative to the catalog average monthly price.
   market_band: 0.1,
-  market_avg_monthly: null
+  market_avg_monthly: null,
+  // Service health from client signals; every number is editable in the admin panel.
+  status_config: {
+    window_min: 120,          // votes considered for the status
+    issues_votes: 3,          // «Есть сообщения о сбоях»: at least N "down" votes...
+    issues_weight: 2,         // ...with at least this total weight, outweighing "works"
+    outage_votes: 8,          // «Массовый сбой»
+    outage_weight: 5,
+    clear_after_min: 360,     // a failure status ends after this long without new "down" votes
+    weight_clicked: 1,        // base weight when the voter went to this VPN's bot through Линза
+    weight_other: 0.3,
+    trust_min: 0.1,
+    trust_max: 2,
+    trust_up: 0.05,           // vote agreed with the outcome
+    trust_down: 0.15,         // vote disagreed with the outcome
+    trust_delay_min: 120,     // when a vote is compared with the outcome
+    trust_quorum: 1,          // minimum weight of other votes needed to judge a vote
+    cooldown_h: 12,           // one vote per service per account in this period
+    daily_services: 5,        // services one account can vote on per 24 h
+    new_account_h: 24,        // votes from younger accounts are not counted
+    anomaly_trust: 0.5,       // anomaly: share of "down" votes from accounts below this trust...
+    anomaly_share: 0.5,       // ...exceeds this share
+    spike_votes: 10,          // anomaly: this many votes...
+    spike_min: 5,             // ...within these minutes
+    networks_h: 24,           // network breakdown period
+    networks_min_votes: 5     // shown once this many votes name a network
+  }
 };
+
+// Columns added after the first release; CREATE TABLE IF NOT EXISTS does not add them to old databases.
+const COLUMNS = [
+  ['users', 'trust_score', 'REAL NOT NULL DEFAULT 1.0']
+];
+function migrate(raw) {
+  for (const [table, column, ddl] of COLUMNS) {
+    const has = raw.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
+    if (!has) raw.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+  }
+}
 
 function toParam(v) {
   if (typeof v === 'boolean') return v ? 1 : 0;
@@ -278,6 +378,7 @@ export function openDb(path) {
   const raw = new DatabaseSync(path);
   raw.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000;');
   raw.exec(SCHEMA);
+  migrate(raw);
 
   const cache = new Map();
   const stmt = (sql) => {

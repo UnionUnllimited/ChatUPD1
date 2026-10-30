@@ -3,10 +3,11 @@ import { api, get, post, download } from '../api.js';
 import { haptic, setMain, mainProgress, confirmDialog, openLink } from '../tg.js';
 import {
   $, $$, esc, rub, fmt, plural, icon, logoHTML, avatarHTML, dateShort, dateTime, stars, segHTML, bindSeg,
-  openSheet, closeSheet, setSheetMain, reasonSheet, toast, toastError, monthsWord, paymentsText
+  openSheet, closeSheet, setSheetMain, reasonSheet, toast, toastError, monthsWord, paymentsText,
+  duration, healthTag, uptimeBarHTML, bindUptimeBar
 } from '../ui.js';
 import { store } from '../store.js';
-import { PROTOCOL, COUNTRY, PLATFORM, TARIFF_MONTHS, MODERATION_STATUS, NOTIFY_TYPES, monthLabel } from '../dict.js';
+import { PROTOCOL, COUNTRY, PLATFORM, TARIFF_MONTHS, MODERATION_STATUS, NOTIFY_TYPES, NETWORK, STATUS_CONFIG_FIELDS, monthLabel } from '../dict.js';
 import { editorHTML, bindEditor, barChart } from '../views/owner.js';
 
 /* ---------------- Shared bits ---------------- */
@@ -102,7 +103,8 @@ export async function dashboard(root) {
         ${tile('/admin/moderation?kind=revisions', 'Карточки', q.revisions, 'новые и правки')}
         ${tile('/admin/moderation?kind=promos', 'Акции', q.promos, 'на модерации')}
         ${tile('/admin/moderation?kind=reviews', 'Отзывы', q.reviews, 'на модерации')}
-        ${tile('/admin/checks', 'Проверки', q.unchecked, 'без проверки 14+ дней')}
+        ${tile('/admin/status', 'Споры и аномалии', q.status_alerts, 'по статусам')}
+        ${tile('/admin/status', 'Сейчас со сбоями', q.incidents, 'по сигналам клиентов')}
       </div>
     </section>
     <div class="grid-2">
@@ -305,6 +307,7 @@ export async function serviceDetail(root, { params, navigate, refresh }) {
       </section>
       <section><h2 class="section-title">Карточка</h2><div class="card panel">${cardKV(d.card)}</div></section>
     </div>
+    <section><h2 class="section-title">Статус по сигналам клиентов</h2><div id="healthSec"></div></section>
     <div class="grid-2">
       <section><h2 class="section-title">История проверок</h2><div id="tChecks"></div></section>
       <section class="stack"><div><h2 class="section-title">Версии карточки</h2><div id="tRevs"></div></div><div><h2 class="section-title">Акции</h2><div id="tPromos"></div></div></section>
@@ -384,10 +387,12 @@ export async function serviceDetail(root, { params, navigate, refresh }) {
     });
   }));
 
-  return charts(root, [
+  const stopVotes = await serviceVotes($('#healthSec', root), id, refresh);
+  const stopCharts = charts(root, [
     ['#chClicks', d.daily, 'clicks', ['переход', 'перехода', 'переходов']],
     ['#chImp', d.daily, 'impressions', ['показ', 'показа', 'показов']]
   ]);
+  return () => { stopVotes(); stopCharts(); };
 }
 
 /* ---------------- Users ---------------- */
@@ -747,4 +752,155 @@ export async function settings(root, { refresh }) {
     if (r) { toast(`Удалено: ${r.services} ${plural(r.services, 'сервис', 'сервиса', 'сервисов')}, ${r.users} ${plural(r.users, 'пользователь', 'пользователя', 'пользователей')}`); refresh(); }
   });
   bindExports(root);
+}
+
+/* ---------------- Health: disputes, anomalies, incidents ---------------- */
+const STATUS_TONE = { operational: 'good', issues: 'warn', outage: 'bad' };
+const CHANGE_REASON = { votes: 'по голосам', recovered: '«работает» перевесило', timeout: 'нет новых сигналов', admin_clear: 'снял администратор' };
+
+function statusActions(id, status, verify = true) {
+  return `<span class="row-flex" style="justify-content:flex-end;flex-wrap:nowrap;gap:6px">
+    ${status && status !== 'operational' ? `<button type="button" class="lgb btn sm press" data-clear="${id}">Снять статус</button><button type="button" class="fill btn sm press" data-confirm="${id}">Подтвердить</button>` : ''}
+    ${verify ? `<button type="button" class="fill btn sm press" data-verify="${id}">${icon.shield} Проверено</button>` : ''}</span>`;
+}
+
+// Delegated handlers for the three admin actions; resolves to true when something changed.
+function bindStatusActions(root, onDone) {
+  const ac = new AbortController();
+  root.addEventListener('click', async (e) => {
+    const clear = e.target.closest('[data-clear]');
+    const confirm = e.target.closest('[data-confirm]');
+    const verify = e.target.closest('[data-verify]');
+    const keep = e.target.closest('[data-keep]');
+    if (keep && (await confirmDialog('Сигналы честные? Аномалия закроется, голоса продолжат учитываться.'))) {
+      if (await act(() => post(`/api/admin/status/anomalies/${keep.dataset.keep}/keep`), 'Аномалия закрыта')) onDone();
+    }
+    if (clear) {
+      const note = await reasonSheet(clear.textContent.trim(), 'Комментарий для журнала: что проверили');
+      if (note && (await act(() => post(`/api/admin/services/${clear.dataset.clear}/status/clear`, { note }), 'Статус снят — голоса до этого момента больше не учитываются'))) onDone();
+    }
+    if (confirm && (await confirmDialog('Подтвердить статус? Споры и аномалии по сервису будут закрыты, статус снимется сам, когда клиенты отметят, что всё работает.'))) {
+      if (await act(() => post(`/api/admin/services/${confirm.dataset.confirm}/status/confirm`), 'Статус подтверждён')) onDone();
+    }
+    if (verify && (await confirmDialog('Поставить отметку «Проверено администратором» с сегодняшней датой?'))) {
+      if (await act(() => post(`/api/admin/services/${verify.dataset.verify}/checks`, { passed: true }), 'Отметка поставлена')) onDone();
+    }
+  }, { signal: ac.signal });
+  return () => ac.abort();
+}
+
+const windowText = (w) => `«не работает»: ${w.down_n} (вес ${String(w.down_w).replace('.', ',')}) · «работает»: ${w.up_n} (вес ${String(w.up_w).replace('.', ',')})`;
+
+export async function statusScreen(root, { refresh }) {
+  const d = await get('/api/admin/status');
+  const cfg = d.config;
+  root.innerHTML = `
+    ${head('Статусы', '<a class="fill btn sm press" href="#/admin/status/settings">Настройки статусов</a>')}
+    <p class="note" style="font-size:15px;padding:0">Статус ставят клиенты кнопками «Работает у меня» / «Не работает у меня». Вмешиваться нужно, только когда владелец оспорил статус или система заметила аномалию — об этом придёт сообщение в бот. Сейчас: «Сообщения о сбоях» от ${cfg.issues_votes} голосов (вес ${cfg.issues_weight}), «Массовый сбой» от ${cfg.outage_votes} (вес ${cfg.outage_weight}) за ${cfg.window_min} мин, автоснятие через ${duration(cfg.clear_after_min)}.</p>
+    <section><h2 class="section-title">Споры владельцев</h2><div id="tDisputes"></div></section>
+    <section><h2 class="section-title">Аномалии</h2><div id="tAnomalies"></div></section>
+    <section><h2 class="section-title">Сейчас со сбоями</h2><div id="tIncidents"></div></section>
+    <section><h2 class="section-title">История изменений</h2><div id="tChanges"></div></section>`;
+  dataTable($('#tDisputes', root), {
+    rows: d.disputes, empty: 'Открытых споров нет', columns: [
+      { key: 'name', title: 'Сервис', render: (x) => `<a href="#/admin/services/${x.service_id}">${esc(x.name)}</a>` },
+      { key: 'status', title: 'Оспорен', render: (x) => healthTag(x.status) },
+      { key: 'comment', title: 'Комментарий владельца', cls: 'text', render: (x) => esc(x.comment || '—') },
+      { key: 'owner_username', title: 'Владелец', render: (x) => `<a href="#/admin/users/${x.owner_id}">${who({ username: x.owner_username, first_name: x.owner_name, id: x.owner_id })}</a>` },
+      { key: 'created_at', title: 'Когда', num: true, render: (x) => dateTime(x.created_at) },
+      { key: 'act', title: '', sortable: false, render: (x) => statusActions(x.service_id, x.status, false) }
+    ]
+  });
+  dataTable($('#tAnomalies', root), {
+    rows: d.anomalies, empty: 'Аномалий нет', columns: [
+      { key: 'name', title: 'Сервис', render: (x) => `<a href="#/admin/services/${x.service_id}">${esc(x.name)}</a>` },
+      { key: 'kind', title: 'Что заметили', cls: 'text', render: (x) => (x.kind === 'spike'
+        ? `Всплеск: ${x.details?.votes} голосов за ${x.details?.minutes} мин`
+        : `${x.details?.low} из ${x.details?.down} сигналов о сбоях — от аккаунтов с низким доверием`) },
+      { key: 'created_at', title: 'Когда', num: true, render: (x) => dateTime(x.created_at) },
+      // On a failure status the usual actions apply; otherwise decide about the votes themselves.
+      { key: 'act', title: '', sortable: false, render: (x) => {
+        const st = d.incidents.find((i) => i.service_id === x.service_id)?.status;
+        return st ? statusActions(x.service_id, st, false) : `<span class="row-flex" style="justify-content:flex-end;flex-wrap:nowrap;gap:6px">
+          <button type="button" class="fill btn sm press" data-keep="${x.id}">Сигналы честные</button>
+          <button type="button" class="lgb btn sm press" data-clear="${x.service_id}">Аннулировать голоса</button></span>`;
+      } }
+    ]
+  });
+  dataTable($('#tIncidents', root), {
+    rows: d.incidents, empty: 'Все сервисы работают', columns: [
+      { key: 'name', title: 'Сервис', render: (x) => `<a class="cell-main" href="#/admin/services/${x.service_id}" style="color:inherit">${logoHTML(x, 'sm')}<b>${esc(x.name)}</b></a>` },
+      { key: 'status', title: 'Статус', render: (x) => `${healthTag(x.status)}${x.confirmed_at ? '<br><span class="small muted">подтверждён</span>' : ''}` },
+      { key: 'since', title: 'С', num: true, render: (x) => dateTime(x.since) },
+      { key: 'window', title: 'Голоса за окно', cls: 'text', sortable: false, render: (x) => esc(windowText(x.window)) },
+      { key: 'act', title: '', sortable: false, render: (x) => statusActions(x.service_id, x.status) }
+    ]
+  });
+  dataTable($('#tChanges', root), {
+    rows: d.changes, empty: 'Изменений ещё не было', columns: [
+      { key: 'changed_at', title: 'Когда', num: true, render: (x) => dateTime(x.changed_at) },
+      { key: 'name', title: 'Сервис', render: (x) => `<a href="#/admin/services/${x.service_id}">${esc(x.name)}</a>` },
+      { key: 'status', title: 'Стал', render: (x) => healthTag(x.status) },
+      { key: 'reason', title: 'Почему', render: (x) => esc(CHANGE_REASON[x.reason] || x.reason) }
+    ]
+  });
+  return bindStatusActions(root, refresh);
+}
+
+export async function statusSettings(root, { refresh }) {
+  const { config } = await get('/api/admin/status/config');
+  const groups = [...new Set(STATUS_CONFIG_FIELDS.map((f) => f[5]))];
+  root.innerHTML = `
+    <div class="crumbs"><a href="#/admin/status">Статусы</a> / настройки</div>
+    ${head('Настройки статусов')}
+    <p class="note" style="font-size:15px;padding:0">Итоговый вес голоса = базовый вес × доверие аккаунта. Доверие меняется незаметно для клиента: через заданное время голос сверяется с итоговым большинством. Изменения применяются к следующему пересчёту (при новом голосе и раз в 10 минут).</p>
+    <form id="cfgForm" class="grid-2">${groups.map((g) => `
+      <section class="card panel stack-sm"><h3>${g}</h3>${STATUS_CONFIG_FIELDS.filter((f) => f[5] === g).map(([key, label, min, max, step]) => `
+        <label class="field"><span>${label}</span><input class="input" type="number" name="${key}" min="${min}" max="${max}" step="${step}" value="${config[key]}" required></label>`).join('')}
+      </section>`).join('')}</form>
+    <div class="err" id="cfgErr" hidden></div>`;
+  const save = async () => {
+    const body = Object.fromEntries([...new FormData($('#cfgForm', root))].map(([k, v]) => [k, Number(v)]));
+    mainProgress(true);
+    try {
+      await api('/api/admin/status/config', { method: 'PUT', body });
+      haptic.notify('success');
+      toast('Настройки статусов сохранены');
+      refresh();
+    } catch (e) {
+      mainProgress(false);
+      $('#cfgErr', root).textContent = e.message;
+      $('#cfgErr', root).hidden = false;
+    }
+  };
+  setMain({ text: 'Сохранить настройки', onClick: save });
+}
+
+// Service page section: current status, votes behind it, admin actions.
+export async function serviceVotes(box, serviceId, onDone) {
+  const d = await get(`/api/admin/services/${serviceId}/votes`);
+  const st = d.status.status;
+  box.innerHTML = `
+    <div class="card panel stack-sm status-card">
+      <div class="row-flex between" style="flex-wrap:wrap;gap:10px"><span style="display:flex;flex-direction:column;gap:4px">${healthTag(st, true)}
+        <span class="small muted">${st !== 'operational' && d.status.since ? `с ${dateTime(d.status.since)} · ` : ''}${esc(windowText(d.window))}</span></span>
+        ${statusActions(serviceId, st)}</div>
+      ${uptimeBarHTML(d.health.days, d.health.uptime30)}
+    </div>
+    <div id="tVotes" style="margin-top:12px"></div>`;
+  bindUptimeBar(box, d.health.days, d.health.uptime30);
+  const EXCLUDED = { new_account: 'новый аккаунт', owner: 'владелец VPN' };
+  dataTable($('#tVotes', box), {
+    rows: d.items, empty: 'Голосов ещё не было', columns: [
+      { key: 'created_at', title: 'Когда', num: true, render: (v) => dateTime(v.created_at) },
+      { key: 'user_id', title: 'Кто', render: (v) => `<a href="#/admin/users/${v.user_id}">${who({ username: v.username, first_name: v.first_name, id: v.user_id })}</a>` },
+      { key: 'value', title: 'Голос', render: (v) => (v.value ? tag('работает', 'good') : tag('не работает', 'warn')) },
+      { key: 'network', title: 'Сеть', render: (v) => esc(NETWORK[v.network]?.name || '—') },
+      { key: 'base_weight', title: 'База', num: true, render: (v) => String(v.base_weight).replace('.', ',') },
+      { key: 'trust_score', title: 'Доверие', num: true, render: (v) => `<span style="color:${v.trust_score < 0.5 ? 'var(--bad)' : 'inherit'}">${String(Math.round(v.trust_score * 100) / 100).replace('.', ',')}</span>` },
+      { key: 'weight', title: 'Вес', num: true, render: (v) => (v.excluded ? '<span class="muted">0</span>' : String(v.weight).replace('.', ',')) },
+      { key: 'excluded', title: 'Не учтён', render: (v) => (v.excluded ? tag(EXCLUDED[v.excluded] || v.excluded) : '') }
+    ]
+  });
+  return bindStatusActions(box, onDone);
 }

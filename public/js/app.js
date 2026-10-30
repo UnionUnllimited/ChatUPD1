@@ -213,6 +213,7 @@ function routeFromStartParam(p) {
   let m;
   if ((m = p.match(/^s_(\d+)$/))) return `/service/${m[1]}`;
   if ((m = p.match(/^owner_(\d+)$/))) return `/owner/${m[1]}`;
+  if ((m = p.match(/^admin_([a-z]+)$/))) return `/admin/${m[1]}`;
   if (['owner', 'top', 'profile', 'admin', 'catalog', 'compare', 'favorites'].includes(p)) return `/${p}`;
   return null;
 }

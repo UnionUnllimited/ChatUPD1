@@ -79,20 +79,22 @@ export function authenticate(db, config, header) {
     const data = validateInitData(value, config.botToken, config.initDataMaxAgeSec);
     if (!data) return null;
     upsertUser(db, data.user);
-    return loadUser(db, data.user.id, config.adminIds);
+    const user = loadUser(db, data.user.id, config.adminIds);
+    return user && { ...user, auth: 'tma' };
   }
   if (scheme === 'Session') {
     const id = sessionUserId(db, value);
     const user = id ? loadUser(db, id, config.adminIds) : null;
     // A session only ever carries admin rights; losing the role ends its use.
-    return user && user.roles.includes('admin') ? user : null;
+    return user && user.roles.includes('admin') ? { ...user, auth: 'session' } : null;
   }
   if (scheme === 'dev' && config.allowDevAuth) {
     const id = Number(value);
     if (!Number.isSafeInteger(id) || id <= 0) return null;
     if (!db.get('SELECT id FROM users WHERE id = ?', id)) upsertUser(db, { id, first_name: 'Тестовый', username: `dev${id}` });
     else db.run('UPDATE users SET last_seen_at = ? WHERE id = ?', now(), id);
-    return loadUser(db, id, config.adminIds);
+    const user = loadUser(db, id, config.adminIds);
+    return user && { ...user, auth: 'dev' };
   }
   return null;
 }

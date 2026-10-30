@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { openDb } from '../server/db.js';
 import { createApp } from '../server/app.js';
 import { signInitData } from '../server/auth.js';
+import { createLoginToken, exchangeLoginToken } from '../server/lib/sessions.js';
 import { invalidate } from '../server/lib/catalog.js';
 import { setClock } from '../server/lib/time.js';
 
@@ -12,7 +13,7 @@ const config = {
   botToken: TOKEN, adminIds: [1], allowDevAuth: false, initDataMaxAgeSec: 3600,
   uploadsDir: '/tmp/linza-test-uploads', webhookSecret: 's3cret'
 };
-let server, base;
+let server, base, db;
 const bot = { enabled: false, handleUpdate: async () => {} };
 const silent = { info() {}, warn() {}, error() {} };
 
@@ -25,7 +26,7 @@ const call = async (path, { method = 'GET', body, auth } = {}) => {
 before(async () => {
   setClock(null);
   invalidate();
-  const db = openDb(':memory:');
+  db = openDb(':memory:');
   server = createServer(createApp({ db, config, bot, log: silent }));
   await new Promise((r) => server.listen(0, r));
   base = `http://127.0.0.1:${server.address().port}`;
@@ -99,4 +100,17 @@ test('admin panel page, redirect and CSV export', async () => {
   assert.deepEqual([...bytes.slice(0, 3)], [0xef, 0xbb, 0xbf]); // BOM, so Excel reads UTF-8
   assert.match(new TextDecoder().decode(bytes), /^ID;Название/);
   assert.equal((await fetch(base + '/api/admin/export/services.csv', { headers: { authorization: tma(5) } })).status, 403);
+});
+
+test('status votes are accepted only from Telegram-signed requests', async () => {
+  const sid = (await call('/api/catalog')).body.items[0].id;
+  const ok = await call(`/api/services/${sid}/vote`, { method: 'POST', auth: tma(21, 'Voter'), body: { value: 'down' } });
+  assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  assert.equal(ok.body.health.my_vote.value, 'down');
+  assert.equal(ok.body.health.status, 'operational'); // a brand-new account is not counted
+  const net = await call(`/api/services/${sid}/vote`, { method: 'PATCH', auth: tma(21, 'Voter'), body: { network: 'beeline' } });
+  assert.equal(net.body.health.my_vote.network, 'beeline');
+  const { session } = exchangeLoginToken(db, createLoginToken(db, 1), 'test');
+  assert.equal((await call(`/api/services/${sid}/vote`, { method: 'POST', auth: `Session ${session}`, body: { value: 'up' } })).status, 403);
+  assert.equal((await call(`/api/services/${sid}/vote`, { method: 'POST', body: { value: 'up' } })).status, 401);
 });

@@ -73,6 +73,7 @@ function build(db) {
   const ratings = map("SELECT service_id, AVG(rating) avg, COUNT(*) n FROM reviews WHERE status = 'approved' GROUP BY service_id");
   const popularity = map('SELECT service_id, COUNT(DISTINCT user_id) n FROM clicks WHERE created_at >= ? GROUP BY service_id', ts - 30 * DAY);
   const checks = map('SELECT service_id, MAX(checked_at) at FROM service_checks WHERE passed = 1 GROUP BY service_id');
+  const health = map('SELECT service_id, status FROM service_status');
   const promos = map(
     `SELECT service_id, id, title, description, discount_percent, promo_code, starts_at, ends_at FROM promotions
      WHERE status = 'approved' AND starts_at <= ? AND ends_at > ? ORDER BY ends_at DESC`, ts, ts);
@@ -110,6 +111,7 @@ function build(db) {
       rating_rank: rating ? (rating.avg * rating.n + globalMean * 5) / (rating.n + 5) : 0,
       popularity: popularity.get(r.id)?.n || 0,
       verified_at: checks.get(r.id)?.at || null,
+      health: health.get(r.id)?.status || 'operational',
       promo: promo ? { id: promo.id, title: promo.title, description: promo.description, discount_percent: promo.discount_percent, promo_code: promo.promo_code, ends_at: promo.ends_at } : null,
       top: tops.get(r.id) ? { period: tops.get(r.id).period, rank: tops.get(r.id).rank } : null,
       devices: card.devices,

@@ -223,7 +223,7 @@ export async function adminTop(root, { query }) {
       <section>
         <p class="label">Веса сводного балла</p>
         <div class="card panel stack-sm" id="weights">
-          ${[['rating', 'Оценки отзывов'], ['clients', 'Уникальные клиенты'], ['stability', 'Стабильность проверок']].map(([k, l]) => `
+          ${[['rating', 'Оценки отзывов'], ['clients', 'Уникальные клиенты'], ['stability', 'Стабильность (время без сбоев)']].map(([k, l]) => `
             <div><div class="row-flex between"><span>${l}</span><b data-wv="${k}">${Math.round(w[k] * 100)}%</b></div>
             <input class="range" type="range" min="0" max="100" step="5" value="${Math.round(w[k] * 100)}" data-w="${k}" style="--p:${Math.round(w[k] * 100)}%" aria-label="${l}"></div>`).join('')}
           <span class="small muted" id="wSum"></span>
@@ -233,12 +233,12 @@ export async function adminTop(root, { query }) {
       <section>
         <p class="label">Расчёт · ${esc(monthLabel(period))}</p>
         <div class="card cmp-wrap"><table class="cmp">
-          <thead><tr><th>#</th><th>Сервис</th><th>Балл</th><th>Оценки</th><th>Клиенты</th><th>Стабильн.</th></tr></thead>
+          <thead><tr><th>#</th><th>Сервис</th><th>Балл</th><th>Оценки</th><th>Клиенты</th><th>Без сбоев</th></tr></thead>
           <tbody>${data.rows.slice(0, 25).map((r) => `<tr class="${r.rank <= 10 && r.score > 0 ? 'diff' : ''}">
             <th>${r.rank}</th><td><b>${esc(r.name)}</b></td><td><b>${String(r.score).replace('.', ',')}</b></td>
             <td>${r.components.rating_n ? `${String(r.components.rating_avg).replace('.', ',')}★ · ${r.components.rating_n}` : '—'}</td>
             <td>${fmt(r.components.clients_n)}</td>
-            <td>${r.components.checks_n ? `${r.components.checks_passed}/${r.components.checks_n}` : '—'}</td></tr>`).join('')}</tbody></table></div>
+            <td>${r.components.uptime_pct != null ? `${String(r.components.uptime_pct).replace('.', ',')}%` : '—'}</td></tr>`).join('')}</tbody></table></div>
         <p class="note" style="margin-top:8px">Подсвечена десятка, которая попадёт в топ.</p>
       </section>
       ${data.archive.length ? `<section><p class="label">Архив</p><div class="card group">${data.archive.map((a) => `
@@ -284,7 +284,9 @@ const ACTIONS = {
   'check.pass': 'отметил проверку: работает', 'check.fail': 'отметил проверку: не работает',
   'top.publish': 'опубликовал топ', 'top.republish': 'переопубликовал топ', 'settings.top_weights': 'изменил веса топа',
   'user.block': 'заблокировал пользователя', 'user.unblock': 'разблокировал пользователя',
-  'service.hide': 'скрыл карточку', 'service.unhide': 'вернул карточку в каталог'
+  'service.hide': 'скрыл карточку', 'service.unhide': 'вернул карточку в каталог',
+  'status.clear': 'снял статус по сигналам', 'status.confirm': 'подтвердил статус по сигналам',
+  'status.anomaly_keep': 'признал сигналы честными', 'settings.status': 'изменил настройки статусов'
 };
 
 function detailText(l) {

@@ -111,3 +111,48 @@ export function monthLabel(period) {
   const [y, m] = period.split('-').map(Number);
   return `${MONTHS_NOM[m - 1]} ${y}`;
 }
+
+/* ---------- Service health from client signals ---------- */
+// Soft wording on purpose: the system never says a VPN "does not work".
+export const HEALTH = {
+  operational: { name: 'Работает', short: 'Работает', tone: 'good' },
+  issues: { name: 'Есть сообщения о сбоях', short: 'Сообщения о сбоях', tone: 'warn' },
+  outage: { name: 'Массовый сбой', short: 'Массовый сбой', tone: 'bad' }
+};
+
+export const NETWORKS = [
+  { id: 'wifi', name: 'Wi-Fi' },
+  { id: 'mts', name: 'МТС' },
+  { id: 'beeline', name: 'Билайн' },
+  { id: 'megafon', name: 'МегаФон' },
+  { id: 'tele2', name: 'Tele2' }
+];
+export const NETWORK = byId(NETWORKS);
+
+// Admin settings for the health system: [key, label, min, max, step, group]. The server
+// validates against the same list, so the form and the checks cannot drift apart.
+export const STATUS_CONFIG_FIELDS = [
+  ['window_min', 'Окно подсчёта голосов, мин', 10, 1440, 5, 'Статусы'],
+  ['issues_votes', '«Сообщения о сбоях»: минимум голосов «не работает»', 1, 100, 1, 'Статусы'],
+  ['issues_weight', '«Сообщения о сбоях»: минимальный суммарный вес', 0.1, 100, 0.1, 'Статусы'],
+  ['outage_votes', '«Массовый сбой»: минимум голосов «не работает»', 1, 500, 1, 'Статусы'],
+  ['outage_weight', '«Массовый сбой»: минимальный суммарный вес', 0.1, 500, 0.1, 'Статусы'],
+  ['clear_after_min', 'Автоснятие сбоя без новых голосов «не работает», мин', 15, 2880, 5, 'Статусы'],
+  ['weight_clicked', 'Вес голоса после перехода в бот через Линзу', 0, 5, 0.05, 'Веса и доверие'],
+  ['weight_other', 'Вес голоса без перехода', 0, 5, 0.05, 'Веса и доверие'],
+  ['trust_min', 'Доверие: минимум', 0, 1, 0.05, 'Веса и доверие'],
+  ['trust_max', 'Доверие: максимум', 1, 10, 0.1, 'Веса и доверие'],
+  ['trust_up', 'Доверие: прибавка, если голос совпал с итогом', 0, 1, 0.01, 'Веса и доверие'],
+  ['trust_down', 'Доверие: штраф, если не совпал', 0, 1, 0.01, 'Веса и доверие'],
+  ['trust_delay_min', 'Сверка голоса с итогом через, мин', 15, 1440, 5, 'Веса и доверие'],
+  ['trust_quorum', 'Минимальный вес других голосов для сверки', 0, 50, 0.1, 'Веса и доверие'],
+  ['cooldown_h', 'Один голос на сервис раз в, ч', 1, 168, 1, 'Лимиты'],
+  ['daily_services', 'Сервисов в сутки с одного аккаунта', 1, 100, 1, 'Лимиты'],
+  ['new_account_h', 'Не учитывать аккаунты моложе, ч', 0, 720, 1, 'Лимиты'],
+  ['anomaly_trust', 'Аномалия: «низкое доверие» — ниже', 0, 2, 0.05, 'Аномалии'],
+  ['anomaly_share', 'Аномалия: доля таких голосов «не работает» больше', 0.1, 1, 0.05, 'Аномалии'],
+  ['spike_votes', 'Всплеск: голосов', 2, 1000, 1, 'Аномалии'],
+  ['spike_min', 'Всплеск: за минут', 1, 120, 1, 'Аномалии'],
+  ['networks_h', 'Разбивка по сетям за, ч', 1, 168, 1, 'Отображение'],
+  ['networks_min_votes', 'Показывать разбивку от, голосов с сетью', 1, 100, 1, 'Отображение']
+];

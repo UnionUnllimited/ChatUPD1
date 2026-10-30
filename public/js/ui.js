@@ -1,6 +1,6 @@
 import { haptic, setBack, setMain } from './tg.js';
 import { asset } from './api.js';
-import { MARKET_LABELS, monthLabel, PAYMENT, PROTOCOL } from './dict.js';
+import { MARKET_LABELS, monthLabel, PAYMENT, PROTOCOL, HEALTH } from './dict.js';
 
 /* ---------------- DOM & formatting ---------------- */
 export const $ = (s, el = document) => el.querySelector(s);
@@ -262,6 +262,58 @@ export function marketTag(m) {
 
 export const topTag = (top) => (top ? `<span class="tag">🏆 Топ-10 за ${esc(monthLabel(top.period).split(' ')[0])}</span>` : '');
 
+// "2 ч назад"
+export function ago(ts) {
+  if (!ts) return '';
+  const m = Math.max(0, Math.round((Date.now() - ts) / 60_000));
+  if (m < 1) return 'только что';
+  if (m < 60) return `${m} мин назад`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} ч назад`;
+  const d = Math.round(h / 24);
+  return `${d} ${plural(d, 'день', 'дня', 'дней')} назад`;
+}
+
+export function duration(min) {
+  if (min < 60) return `${min} мин`;
+  const h = Math.floor(min / 60), m = min % 60;
+  return m ? `${h} ч ${m} мин` : `${h} ч`;
+}
+
+// Health from client signals: a coloured dot plus words, never colour alone.
+export function healthTag(status, long = false) {
+  const h = HEALTH[status] || HEALTH.operational;
+  return `<span class="health ${h.tone}"><i aria-hidden="true"></i>${long ? h.name : h.short}</span>`;
+}
+
+const dayText = (d) => (d.nodata ? 'ещё не было в каталоге' : d.outage_min ? `массовый сбой ${duration(d.outage_min)}${d.issues_min ? `, сообщения о сбоях ${duration(d.issues_min)}` : ''}`
+  : d.issues_min ? `сообщения о сбоях ${duration(d.issues_min)}` : 'без сбоев');
+
+// 30 daily segments like a status page; tapping a day shows its details in `readout`.
+export function uptimeBarHTML(days, uptime) {
+  const bad = days.filter((d) => d.outage_min || d.issues_min).length;
+  return `
+    <div class="uptime" role="img" aria-label="Доступность за 30 дней: ${String(uptime).replace('.', ',')}% времени без сбоев, дней со сбоями: ${bad}">
+      ${days.map((d, i) => `<i class="${d.nodata ? 'nodata' : d.outage_min ? 'outage' : d.issues_min ? 'issues' : 'ok'}" data-i="${i}"></i>`).join('')}
+    </div>
+    <div class="uptime-scale"><span>30 дней назад</span><span class="uptime-readout">${String(uptime).replace('.', ',')}% без сбоев</span><span>сегодня</span></div>`;
+}
+
+export function bindUptimeBar(root, days, uptime) {
+  const bar = root.querySelector('.uptime');
+  const out = root.querySelector('.uptime-readout');
+  if (!bar || !out) return;
+  bar.addEventListener('click', (e) => {
+    const r = bar.getBoundingClientRect();
+    const i = Math.min(days.length - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * days.length)));
+    haptic.select();
+    bar.querySelectorAll('i').forEach((x, k) => x.classList.toggle('on', k === i));
+    out.textContent = `${dateShort(days[i].day)}: ${dayText(days[i])}`;
+    clearTimeout(bar._t);
+    bar._t = setTimeout(() => { bar.querySelectorAll('i').forEach((x) => x.classList.remove('on')); out.textContent = `${String(uptime).replace('.', ',')}% без сбоев`; }, 4000);
+  });
+}
+
 export function verifiedHTML(ts) {
   return ts ? `<span class="ok">${icon.shield} Проверено ${dateShort(ts)}</span>` : '<span>Ещё не проверялся</span>';
 }
@@ -288,7 +340,7 @@ export function vpnCardHTML(s, { fav = false, cmp = false } = {}) {
         <div class="vpn-name">${esc(s.name)}</div>
         <div class="meta">
           <span><span class="star">★</span> ${ratingStr(s.rating)} · ${fmt(s.reviews)} ${plural(s.reviews, 'отзыв', 'отзыва', 'отзывов')}</span>
-          ${verifiedHTML(s.verified_at)}
+          ${healthTag(s.health)}${s.verified_at ? `<span class="ok">${icon.shield} ${dateShort(s.verified_at)}</span>` : ''}
         </div>
       </div>
       <button type="button" class="fill circle fav press" data-fav="${s.id}" aria-pressed="${fav}" aria-label="${fav ? 'Убрать из избранного' : 'В избранное'}">${icon.heart(fav)}</button>

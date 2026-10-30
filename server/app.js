@@ -9,6 +9,7 @@ import { meRoutes } from './routes/me.js';
 import { ownerRoutes } from './routes/owner.js';
 import { adminRoutes } from './routes/admin.js';
 import { panelRoutes } from './routes/panel.js';
+import { healthRoutes } from './routes/health.js';
 
 const PUBLIC_DIR = resolve(ROOT, 'public');
 const MAX_BODY = 1024 * 1024;
@@ -92,6 +93,7 @@ export function createApp({ db, config, bot, log = console }) {
   ownerRoutes(router, deps);
   adminRoutes(router, deps);
   panelRoutes(router, deps);
+  healthRoutes(router, deps);
   router.get('/api/health', () => ({ ok: true }));
 
   async function handleWebhook(req, res) {

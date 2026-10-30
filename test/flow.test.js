@@ -136,10 +136,14 @@ test('monthly top: composite score with configurable weights, archive badge', ()
   makeUser(2000);
   db.run('INSERT INTO clicks (service_id, user_id, created_at) VALUES (?, 2000, ?)', good, sept);
   db.run("INSERT INTO reviews (service_id, user_id, rating, text, status, created_at, updated_at) VALUES (?, 2000, 5, 'Отлично работает', 'approved', ?, ?)", good, sept, sept);
-  db.run('INSERT INTO service_checks (service_id, admin_id, passed, checked_at) VALUES (?, 1, 1, ?), (?, 1, 0, ?)', good, sept, busy, sept);
+  // Stability: «Популярный» had a 6-day «Массовый сбой» in September.
+  db.run("INSERT INTO status_changes (service_id, status, changed_at, reason) VALUES (?, 'outage', ?, 'votes'), (?, 'operational', ?, 'timeout')",
+    busy, Date.UTC(2026, 8, 10), busy, Date.UTC(2026, 8, 16));
 
+  setClock(() => Date.UTC(2026, 9, 1, 10));
   const byDefault = computeTop(db, '2026-09');
   assert.equal(byDefault.rows[0].service_id, good);
+  assert.ok(byDefault.rows.find((r) => r.service_id === busy).components.stability < 0.85);
   const clientsOnly = computeTop(db, '2026-09', { rating: 0, clients: 1, stability: 0 });
   assert.equal(clientsOnly.rows[0].service_id, busy);
   assert.equal(clientsOnly.rows[0].score, 100);

@@ -2,7 +2,7 @@ import { get } from '../api.js';
 import { store, removeFromCompare, COMPARE_MAX } from '../store.js';
 import { haptic } from '../tg.js';
 import { $, esc, rub, fmt, icon, logoHTML, emptyHTML, ratingStr, dateShort, paymentsText, monthsWord } from '../ui.js';
-import { PROTOCOL, COUNTRY, PLATFORM, TARIFF_MONTHS, MARKET_LABELS } from '../dict.js';
+import { PROTOCOL, COUNTRY, PLATFORM, TARIFF_MONTHS, MARKET_LABELS, HEALTH } from '../dict.js';
 
 const list = (arr, dict) => arr.map((v) => dict[v]?.name || v).sort().join(', ');
 
@@ -13,6 +13,7 @@ const ROWS = [
   ['Относительно рынка', (s) => s.market, (v) => (v ? MARKET_LABELS[v] : '—')],
   ['Рейтинг', (s) => s.rating, ratingStr, 'max'],
   ['Отзывы', (s) => s.reviews, fmt, 'max'],
+  ['Статус по сигналам', (s) => s.health || 'operational', (v) => HEALTH[v]?.name || HEALTH.operational.name],
   ['Ручная проверка', (s) => s.verified_at, (v) => (v ? `✓ ${dateShort(v)}` : 'Не проверялся')],
   ['Пробный период', (s) => (s.trial ? s.trial_days || 'есть' : null), (v) => (v == null ? 'Нет' : typeof v === 'number' ? `${v} дн.` : 'Есть')],
   ['Протоколы', (s) => list(s.protocols, PROTOCOL), (v) => v],

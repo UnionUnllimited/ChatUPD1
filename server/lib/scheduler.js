@@ -1,6 +1,7 @@
 import { expirePromos } from './moderation.js';
 import { publishTop } from './top.js';
 import { flushOutbox } from './notify.js';
+import { recomputeActive, evaluateTrust } from './health.js';
 import { previousPeriod, mskDate, mskHour } from './time.js';
 
 // The monthly top is recalculated on the 1st: admins can preview and publish it
@@ -34,5 +35,16 @@ export function startScheduler({ db, bot, config, log = console }) {
   };
   housekeeping();
   timers.push(setInterval(housekeeping, 5 * 60_000));
+
+  // Service health: failure statuses expire by timer, and votes older than the trust delay
+  // are compared with the outcome. Every 10 minutes.
+  const health = () => {
+    try {
+      recomputeActive(db);
+      evaluateTrust(db);
+    } catch (e) { log.error('health:', e.message); }
+  };
+  health();
+  timers.push(setInterval(health, 10 * 60_000));
   return () => timers.forEach(clearInterval);
 }

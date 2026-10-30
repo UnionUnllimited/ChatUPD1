@@ -27,7 +27,9 @@ export function adminRoutes(r, { db, config }) {
                     AND NOT EXISTS (SELECT 1 FROM service_checks c WHERE c.service_id = s.id AND c.checked_at > ?)`, now() - 14 * DAY),
       users: n('SELECT COUNT(*) n FROM users'),
       outbox: n("SELECT COUNT(*) n FROM notifications WHERE status = 'queued'"),
-      top_pending: !db.get('SELECT 1 FROM top_snapshots WHERE period = ?', previousPeriod())
+      top_pending: !db.get('SELECT 1 FROM top_snapshots WHERE period = ?', previousPeriod()),
+      incidents: n("SELECT COUNT(*) n FROM service_status WHERE status != 'operational'"),
+      status_alerts: n("SELECT COUNT(*) n FROM status_disputes WHERE state = 'open'") + n("SELECT COUNT(*) n FROM status_anomalies WHERE state = 'open'")
     };
   });
 

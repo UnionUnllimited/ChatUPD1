@@ -3,9 +3,45 @@ import { store, loadMe } from '../store.js';
 import { haptic, setMain, mainProgress, confirmDialog } from '../tg.js';
 import {
   $, $$, esc, rub, fmt, plural, icon, logoHTML, emptyHTML, dateShort, dateLong, segHTML, bindSeg,
-  openSheet, closeSheet, setSheetMain, toast, toastError, monthsWord, replay
+  openSheet, closeSheet, setSheetMain, toast, toastError, monthsWord, replay,
+  ago, duration, healthTag, uptimeBarHTML, bindUptimeBar
 } from '../ui.js';
-import { PROTOCOLS, COUNTRIES, PLATFORMS, PAYMENTS, TARIFF_MONTHS, MODERATION_STATUS, monthLabel } from '../dict.js';
+import { PROTOCOLS, COUNTRIES, PLATFORMS, PAYMENTS, TARIFF_MONTHS, MODERATION_STATUS, HEALTH, NETWORK, monthLabel } from '../dict.js';
+
+/* ---------------- Health from client signals ---------------- */
+async function drawHealth(box, serviceId) {
+  const { health: h, window: w, dispute } = await get(`/api/owner/services/${serviceId}/health`);
+  const failing = h.status !== 'operational';
+  const nets = Object.entries(w.down_networks || {}).sort((a, b) => b[1] - a[1]).map(([n, c]) => `${NETWORK[n]?.name || n} — ${c}`).join(', ');
+  const openDispute = dispute?.state === 'open';
+  box.innerHTML = `
+    <div class="row-flex between" style="align-items:flex-start"><span style="display:flex;flex-direction:column;gap:4px">${healthTag(h.status, true)}
+      <span class="small muted">${h.last_signal_at ? `Последний сигнал клиента ${ago(h.last_signal_at)}` : 'Клиенты ещё не отмечали статус'}</span></span></div>
+    ${uptimeBarHTML(h.days, h.uptime30)}
+    ${failing ? `<p class="small" style="margin:4px 0 0;color:var(--text-2)">За последние часы: ${w.down_n} ${plural(w.down_n, 'сигнал', 'сигнала', 'сигналов')} о сбоях, ${w.up_n} — что работает.${nets ? ` По сетям: ${esc(nets)}.` : ''} Статус снимется сам, когда клиенты отметят, что всё работает.</p>` : ''}
+    ${openDispute ? '<span class="tag warn" style="align-self:flex-start">Спор на рассмотрении у администратора</span>'
+      : failing ? '<button type="button" class="fill btn press" id="dispute" style="align-self:flex-start">Оспорить статус</button>'
+      : dispute ? `<span class="small muted">Последний спор: ${dispute.state === 'cleared' ? 'статус снят администратором' : 'статус подтверждён'}</span>` : ''}
+    <p class="note" style="padding:0">Статус ставят клиенты кнопками «Работает у меня» / «Не работает у меня»; он влияет на «Стабильность» в топе месяца. Уведомление о сбоях придёт в бот.</p>`;
+  bindUptimeBar(box, h.days, h.uptime30);
+  $('#dispute', box)?.addEventListener('click', () => openSheet('Оспорить статус', `
+      <p class="note" style="font-size:15px">Администратор получит уведомление, проверит сервис и снимет статус «${HEALTH[h.status].name}», если он ошибочный.</p>
+      <label class="field"><span>Комментарий — необязательно</span><textarea class="input" id="dispText" maxlength="500" placeholder="Например: серверы работают, проблема у одного провайдера"></textarea></label>
+      <div class="err" id="dispErr" hidden></div>`, (sheet) => {
+    setSheetMain({
+      text: 'Отправить администратору',
+      onClick: async () => {
+        try {
+          await post(`/api/owner/services/${serviceId}/dispute`, { comment: $('#dispText', sheet).value });
+          haptic.notify('success');
+          closeSheet(true);
+          toast('Спор отправлен администратору');
+          drawHealth(box, serviceId);
+        } catch (e) { $('#dispErr', sheet).textContent = e.message; $('#dispErr', sheet).hidden = false; }
+      }
+    });
+  }));
+}
 
 const statusTag = (st) => `<span class="tag ${st === 'approved' ? 'good' : st === 'rejected' ? 'bad' : st === 'pending' ? 'warn' : 'neutral'}">${MODERATION_STATUS[st] || st}</span>`;
 
@@ -363,7 +399,7 @@ async function drawStats(box, service) {
           <div class="row-flex between" style="padding-bottom:6px"><span class="muted small">Сводный балл</span><b>${String(st.top.score).replace('.', ',')}</b></div>
           ${comp('Оценки', c.rating, w.rating, c.rating_n ? `${String(c.rating_avg).replace('.', ',')}★ · ${c.rating_n} ${plural(c.rating_n, 'отзыв', 'отзыва', 'отзывов')} за месяц` : 'Нет отзывов за месяц')}
           ${comp('Клиенты', c.clients, w.clients, `${fmt(c.clients_n)} уникальных переходов в бот`)}
-          ${comp('Стабильность', c.stability, w.stability, c.checks_n ? `${c.checks_passed} из ${c.checks_n} ручных проверок пройдено` : 'Проверок в этом месяце ещё не было')}
+          ${comp('Стабильность', c.stability, w.stability, `${String(c.uptime_pct ?? 100).replace('.', ',')}% времени без сбоев по сигналам клиентов${c.downtime_min ? ` · сбои ${duration(c.downtime_min)}` : ''}`)}
         ` : '<p class="note">Сервис попадёт в расчёт после публикации карточки.</p>'}
       </div>
       <p class="note" style="margin-top:8px">Итоговый топ-10 публикуется 1-го числа. Позицию нельзя купить.</p>
@@ -400,6 +436,7 @@ export async function ownerService(root, { params, navigate }) {
     <div class="svc-head">${logoHTML({ name: s.name, logo_url: s.logo_url }, 'xl')}<div class="grow"><h1 class="vpn-name">${esc(s.name)}</h1>
       ${s.status === 'published' && !s.hidden ? `<button type="button" class="link-btn" data-nav="/service/${s.id}">Открыть в каталоге ${icon.chev}</button>` : ''}</div></div>
     ${statusBox()}
+    ${s.status === 'published' ? '<section class="card panel stack-sm status-card" id="healthBox"><div class="skeleton" style="min-height:90px"></div></section>' : ''}
     <div id="tabs">${segHTML([{ id: 'card', name: 'Карточка' }, { id: 'promos', name: 'Акции' }, { id: 'stats', name: 'Статистика' }], tab)}</div>
     <div id="tabBody" class="stack"></div>`;
 
@@ -438,6 +475,7 @@ export async function ownerService(root, { params, navigate }) {
       else stopStats = await drawStats(body, s);
     } catch (e) { body.innerHTML = emptyHTML(esc(e.message)); }
   };
+  if (s.status === 'published') drawHealth($('#healthBox', root), id).catch(() => { $('#healthBox', root).remove(); });
   bindSeg($('#tabs .seg', root), (v) => { tab = v; drawTab(); });
   await drawTab();
   return () => stopStats?.();

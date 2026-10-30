@@ -1,5 +1,5 @@
-// Demo data: 25 fictional VPN services with tariffs, reviews, clicks, checks, promotions
-// and two published monthly tops. Run: npm run seed  (add -- --reset to start from scratch).
+// Demo data: 25 fictional VPN services with tariffs, reviews, clicks, checks, promotions,
+// client status signals with a history of incidents, and two published monthly tops. Run: npm run seed  (add -- --reset to start from scratch).
 // Every name and bot link here is made up; wipe this data before launch.
 import { rmSync } from 'node:fs';
 import { config } from '../server/config.js';
@@ -8,6 +8,7 @@ import { applyCard } from '../server/lib/moderation.js';
 import { recomputeMarketAverage } from '../server/lib/catalog.js';
 import { publishTop } from '../server/lib/top.js';
 import { grantRole } from '../server/auth.js';
+import { recordVote, recomputeStatus, evaluateTrust, openDispute } from '../server/lib/health.js';
 import { DAY, mskDay, now, periodOf, shiftPeriod, periodRange } from '../server/lib/time.js';
 
 if (process.argv.includes('--reset')) {
@@ -228,6 +229,78 @@ db.tx(() => {
   recomputeMarketAverage(db);
 });
 
+/* ---------------- Status signals ---------------- */
+// Votes go through the real pipeline (weights, cooldowns, recompute), in time order per service.
+const MIN = 60_000;
+const NETS = ['wifi', 'mts', 'beeline', 'megafon', 'tele2'];
+const clientRow = (id) => db.get('SELECT id, created_at FROM users WHERE id = ?', id);
+const voters = (sid) => db.all('SELECT DISTINCT user_id id FROM clicks WHERE service_id = ? AND user_id > ? AND user_id < ?', sid, FAKE_BASE, FAKE_BASE + 10_000).map((r) => r.id);
+const vote = (uid, sid, value, at, network = null) => {
+  try {
+    recordVote(db, clientRow(uid), sid, value, { ts: at });
+    if (network) db.run('UPDATE status_votes SET network = ? WHERE user_id = ? AND service_id = ? AND created_at = ?', network, uid, sid, at);
+    return true;
+  } catch { return false; } // daily limit and cooldown collisions are fine to skip
+};
+// Background job every 10 minutes, so timeouts land where the scheduler would put them.
+const settle = (sid, from, to) => { for (let t = from; t <= to; t += 10 * MIN) recomputeStatus(db, sid, { ts: t }); };
+
+const published = db.all("SELECT id, published_at FROM services WHERE status = 'published' ORDER BY id");
+for (const [i, s] of published.entries()) {
+  const pool = voters(s.id);
+  if (pool.length < 12) continue;
+  const quality = 1 - i / published.length; // earlier demo services are steadier on average
+  const from = Math.max(startOfData, s.published_at) + DAY;
+  const events = [];
+  // Everyday "it works" signals.
+  for (let k = 0; k < between(8, 24); k++) events.push({ at: from + Math.floor(rnd() * (ts0 - 3 * 3600_000 - from)), kind: 'up' });
+  // A few past incidents; flakier services get more of them.
+  for (let k = 0; k < between(0, 2) + Math.round((1 - quality) * 4); k++) {
+    const at = from + Math.floor(rnd() * (ts0 - 12 * 3600_000 - from));
+    events.push({ at, kind: rnd() < 0.25 ? 'outage' : 'issues' });
+  }
+  events.sort((a, b) => a.at - b.at);
+  for (const e of events) {
+    if (e.kind === 'up') { vote(pick(pool), s.id, 'up', e.at, rnd() < 0.5 ? pick(NETS) : null); continue; }
+    const crowd = sample(pool, e.kind === 'outage' ? between(9, 13) : between(3, 6));
+    const net = pick(NETS);
+    let t = e.at;
+    for (const uid of crowd) {
+      t += between(2, 14) * MIN;
+      vote(uid, s.id, 'down', t, rnd() < 0.7 ? (rnd() < 0.7 ? net : pick(NETS)) : null);
+    }
+    // Recovery: either clients confirm it works again, or the status times out.
+    const back = t + between(40, 300) * MIN;
+    if (rnd() < 0.6) for (const uid of sample(pool.filter((u) => !crowd.includes(u)), between(2, 4))) vote(uid, s.id, 'up', back + between(0, 20) * MIN);
+    settle(s.id, t, Math.min(ts0 - 3 * 3600_000, t + 7 * 3600_000));
+  }
+}
+// Votes older than the trust delay have been compared with the majority by now.
+while (db.get("SELECT COUNT(*) n FROM status_votes WHERE trust_checked_at IS NULL AND created_at <= ?", ts0 - 2 * 3600_000).n) evaluateTrust(db, { ts: ts0 });
+db.run("UPDATE status_anomalies SET state = 'cleared', resolved_by = ?, resolved_at = created_at + 3600000", DEV_ADMIN);
+
+// Current picture for the demo: issues on the dev owner's own service (try «Оспорить»),
+// an outage with an open dispute, and signals from low-trust accounts that only raise an anomaly.
+const svcByName = (name) => db.get('SELECT id FROM services WHERE name = ?', name).id;
+const recent = (sid, value, specs) => {
+  const pool = voters(sid).filter((u) => !db.get('SELECT 1 FROM status_votes WHERE user_id = ? AND service_id = ? AND created_at > ?', u, sid, ts0 - 12 * 3600_000));
+  for (const [ago, network] of specs) vote(pool.shift(), sid, value, ts0 - ago * MIN, network);
+};
+const aurora = svcByName('Аврора VPN');
+recent(aurora, 'down', [[95, 'mts'], [70, 'mts'], [42, 'wifi'], [18, 'mts']]);
+const outageSvc = db.get("SELECT id, owner_id FROM services WHERE name = ?", SERVICES[7][0]);
+recent(outageSvc.id, 'up', [[300, 'wifi']]);
+recent(outageSvc.id, 'down', [[88, 'beeline'], [80, 'mts'], [71, 'beeline'], [64, 'beeline'], [55, null], [47, 'megafon'], [39, 'beeline'], [30, 'mts'], [22, 'beeline'], [11, 'wifi']]);
+openDispute(db, { id: outageSvc.owner_id, roles: ['vpn_owner'] }, outageSvc.id, 'Серверы в порядке, у Билайна проблемы с маршрутизацией — мы уже обходим через резервные узлы.');
+db.run("UPDATE status_disputes SET created_at = ? WHERE state = 'open'", ts0 - 6 * MIN);
+const lowTrust = db.all('SELECT DISTINCT user_id id FROM clicks WHERE service_id = ? AND user_id > ? AND user_id < ? LIMIT 6 OFFSET 30', svcByName(SERVICES[13][0]), FAKE_BASE, FAKE_BASE + 10_000).map((r) => r.id);
+db.run(`UPDATE users SET trust_score = 0.2 WHERE id IN (${lowTrust.join(',')})`);
+const lowSvc = svcByName(SERVICES[13][0]);
+lowTrust.slice(0, 5).forEach((uid, k) => vote(uid, lowSvc, 'down', ts0 - (50 - k * 9) * MIN, 'tele2'));
+recent(lowSvc, 'up', [[35, 'wifi'], [12, 'megafon']]);
+// Recent "works" signals elsewhere, so cards show a fresh last-signal time.
+for (const s of published) if (![aurora, outageSvc.id, lowSvc].includes(s.id) && rnd() < 0.7) recent(s.id, 'up', [[between(20, 600), rnd() < 0.5 ? pick(NETS) : null]]);
+
 // Publish the two finished months so the home screen and the archive have data.
 for (const offset of [-2, -1]) publishTop(db, shiftPeriod(periodOf(ts0), offset), DEV_ADMIN);
 // Seeding must not spam: drop the outbox the publications produced.
@@ -235,6 +308,7 @@ db.run('DELETE FROM notifications');
 
 const n = (sql) => db.get(sql).n;
 console.log(`Seeded ${n('SELECT COUNT(*) n FROM services')} services, ${n('SELECT COUNT(*) n FROM users')} users, ` +
-  `${n('SELECT COUNT(*) n FROM reviews')} reviews, ${n('SELECT COUNT(*) n FROM clicks')} clicks. Market average: ${db.setting('market_avg_monthly')} ₽/мес.`);
+  `${n('SELECT COUNT(*) n FROM reviews')} reviews, ${n('SELECT COUNT(*) n FROM clicks')} clicks, ${n('SELECT COUNT(*) n FROM status_votes')} status votes, ` +
+  `${n("SELECT COUNT(*) n FROM status_changes WHERE status != 'operational'")} incidents. Market average: ${db.setting('market_avg_monthly')} ₽/мес.`);
 console.log(`Demo admin / owner Telegram ID: ${DEV_ADMIN} (add it to ADMIN_IDS).`);
 db.close();
