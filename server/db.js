@@ -308,7 +308,90 @@ CREATE TABLE IF NOT EXISTS ad_placements (
   created_at INTEGER NOT NULL
 );
 
--- Reserved for the services market (v2+): channel ads with escrow, hosting, jobs, ready solutions.
+-- Ad exchange: channel admins (sellers) list ad slots, VPN owners (buyers) book them.
+-- For now deals are free and settled directly in Telegram; an escrow will sit on ad_deals later.
+CREATE TABLE IF NOT EXISTS ad_channels (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id INTEGER NOT NULL REFERENCES users(id),
+  link TEXT NOT NULL,                      -- https://t.me/<username> or an invite link
+  username TEXT,                           -- lowercase public username, used for verification
+  title TEXT NOT NULL,
+  photo_url TEXT,
+  topic TEXT NOT NULL,
+  subscribers INTEGER NOT NULL,
+  reach_24 INTEGER NOT NULL,
+  reach_48 INTEGER NOT NULL,
+  stats_url TEXT,                          -- Telemetr / TGStat page; without it reach is the seller's word
+  formats TEXT NOT NULL DEFAULT '{}',      -- {"1/24": 6000, "pin": 9000, ...}, whole rubles
+  free_dates TEXT NOT NULL DEFAULT '[]',   -- ["2026-11-05", ...], Moscow dates
+  had_vpn INTEGER NOT NULL DEFAULT 0,
+  contact TEXT NOT NULL,                   -- shown to a buyer only after the seller agrees
+  tg_chat_id INTEGER,
+  verified_at INTEGER,                     -- the seller added the bot as a channel admin
+  subscribers_at INTEGER,                  -- subscribers last taken from Telegram itself
+  status TEXT NOT NULL DEFAULT 'active',   -- active | hidden (by seller) | review (complaints) | blocked (admin)
+  block_reason TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ad_channels_owner ON ad_channels(owner_id);
+CREATE INDEX IF NOT EXISTS ad_channels_username ON ad_channels(username);
+
+CREATE TABLE IF NOT EXISTS ad_deals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channel_id INTEGER NOT NULL REFERENCES ad_channels(id) ON DELETE CASCADE,
+  seller_id INTEGER NOT NULL REFERENCES users(id),
+  buyer_id INTEGER NOT NULL REFERENCES users(id),
+  service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
+  format TEXT NOT NULL,
+  date TEXT NOT NULL,                      -- Moscow date of the post
+  price INTEGER NOT NULL,                  -- at the time of booking
+  comment TEXT,
+  status TEXT NOT NULL DEFAULT 'requested', -- requested | agreed | published | reviewed | declined | cancelled | failed
+  decline_reason TEXT,
+  cancelled_by INTEGER,
+  created_at INTEGER NOT NULL,
+  decided_at INTEGER,
+  published_at INTEGER,
+  review_asked_at INTEGER,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ad_deals_channel ON ad_deals(channel_id, status);
+CREATE INDEX IF NOT EXISTS ad_deals_buyer ON ad_deals(buyer_id, created_at);
+CREATE INDEX IF NOT EXISTS ad_deals_seller ON ad_deals(seller_id, created_at);
+
+-- Only a buyer whose deal actually happened can rate a channel.
+CREATE TABLE IF NOT EXISTS ad_reviews (
+  deal_id INTEGER PRIMARY KEY REFERENCES ad_deals(id) ON DELETE CASCADE,
+  channel_id INTEGER NOT NULL REFERENCES ad_channels(id) ON DELETE CASCADE,
+  buyer_id INTEGER NOT NULL REFERENCES users(id),
+  rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  came INTEGER,                            -- new subscribers / users from the post
+  payments INTEGER,
+  reach_match TEXT,                        -- yes | partly | no
+  text TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ad_reviews_channel ON ad_reviews(channel_id, created_at);
+
+CREATE TABLE IF NOT EXISTS ad_complaints (
+  channel_id INTEGER NOT NULL REFERENCES ad_channels(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  reason TEXT NOT NULL,
+  text TEXT,
+  created_at INTEGER NOT NULL,
+  resolved_at INTEGER,
+  PRIMARY KEY (channel_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS ad_favorites (
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  channel_id INTEGER NOT NULL REFERENCES ad_channels(id) ON DELETE CASCADE,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, channel_id)
+);
+
+-- Reserved for the services market (v2+): hosting, jobs, ready solutions.
 CREATE TABLE IF NOT EXISTS market_listings (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   kind TEXT NOT NULL,                     -- ad_channel | hosting | job | solution
@@ -353,7 +436,10 @@ export const DEFAULT_SETTINGS = {
     spike_min: 5,             // ...within these minutes
     networks_h: 24,           // network breakdown period
     networks_min_votes: 5     // shown once this many votes name a network
-  }
+  },
+  // Ad exchange: CPM traffic light (₽ per 1000 views), complaints before a channel goes to review,
+  // and when a buyer is asked for a review after the post date.
+  ad_config: { cpm_good: 250, cpm_ok: 350, complaints_review: 3, review_after_h: 48 }
 };
 
 // Columns added after the first release; CREATE TABLE IF NOT EXISTS does not add them to old databases.

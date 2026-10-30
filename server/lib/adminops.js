@@ -123,6 +123,13 @@ export function purgeDemo(db, admin) {
       db.run('DELETE FROM services WHERE id = ?', id);
     }
     const users = db.get('SELECT COUNT(*) n FROM users WHERE id >= ?', DEMO_USER_MIN).n;
+    // Ad exchange: demo channels (cascades to their deals and reviews) and everything demo users did there.
+    db.run("DELETE FROM ad_channels WHERE owner_id >= ? OR link LIKE 'https://t.me/linza_demo_%'", DEMO_USER_MIN);
+    db.run('DELETE FROM ad_deals WHERE buyer_id >= ? OR seller_id >= ?', DEMO_USER_MIN, DEMO_USER_MIN);
+    for (const table of ['ad_reviews', 'ad_complaints', 'ad_favorites', 'status_votes']) {
+      db.run(`DELETE FROM ${table} WHERE ${table === 'ad_reviews' ? 'buyer_id' : 'user_id'} >= ?`, DEMO_USER_MIN);
+    }
+    db.run('DELETE FROM status_disputes WHERE owner_id >= ?', DEMO_USER_MIN);
     for (const table of ['reviews', 'clicks', 'favorites', 'user_roles', 'user_notify', 'applications', 'service_revisions', 'notifications']) {
       const col = table === 'service_revisions' ? 'author_id' : 'user_id';
       db.run(`DELETE FROM ${table} WHERE ${col} >= ?`, DEMO_USER_MIN);

@@ -26,7 +26,11 @@ export function meRoutes(r, { db }) {
       favorites: db.all('SELECT service_id FROM favorites WHERE user_id = ? ORDER BY created_at DESC', u.id).map((f) => f.service_id),
       counts: {
         reviews: db.get('SELECT COUNT(*) n FROM reviews WHERE user_id = ?', u.id).n,
-        history: db.get('SELECT COUNT(DISTINCT service_id) n FROM clicks WHERE user_id = ?', u.id).n
+        history: db.get('SELECT COUNT(DISTINCT service_id) n FROM clicks WHERE user_id = ?', u.id).n,
+        // Ad exchange: what needs the user's attention.
+        ad_channels: db.get('SELECT COUNT(*) n FROM ad_channels WHERE owner_id = ?', u.id).n,
+        ad_requests: db.get("SELECT COUNT(*) n FROM ad_deals WHERE seller_id = ? AND status = 'requested'", u.id).n,
+        ad_deals: db.get("SELECT COUNT(*) n FROM ad_deals WHERE buyer_id = ? AND status IN ('requested', 'agreed', 'published')", u.id).n
       }
     };
   });

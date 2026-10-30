@@ -62,6 +62,38 @@ export const PAYMENTS = [
 
 export const DEVICE_OPTIONS = [1, 2, 3, 5, 10];
 
+/* ---------- Ad exchange ---------- */
+export const AD_TOPICS = [
+  { id: 'games', name: 'Игры' }, { id: 'shock', name: 'Шок-контент' }, { id: 'humor', name: 'Юмор' },
+  { id: 'apk', name: 'APK и софт' }, { id: 'news', name: 'Новости' }, { id: 'movies', name: 'Кино и сериалы' },
+  { id: 'music', name: 'Музыка' }, { id: 'tech', name: 'Технологии' }, { id: 'crypto', name: 'Крипта' },
+  { id: 'sport', name: 'Спорт' }, { id: 'lifestyle', name: 'Лайфстайл' }, { id: 'edu', name: 'Образование' },
+  { id: 'other', name: 'Другое' }
+];
+// `reach` — which reach the CPM is counted from; a package of channels has no single reach.
+export const AD_FORMATS = [
+  { id: '1/24', name: '1/24', hint: '1 час в топе, 24 часа в ленте', reach: 24 },
+  { id: '2/48', name: '2/48', hint: '2 часа в топе, 48 часов в ленте', reach: 48 },
+  { id: '1/48', name: '1/48', hint: '1 час в топе, 48 часов в ленте', reach: 48 },
+  { id: 'pin', name: 'Закреп', hint: 'пост в закрепе канала', reach: 48 },
+  { id: 'pack', name: 'Пакет каналов', hint: 'размещение в нескольких каналах продавца', reach: null }
+];
+export const AD_DEAL_STATUS = {
+  requested: { name: 'Заявка', tone: 'warn' },
+  agreed: { name: 'Согласовано', tone: 'good' },
+  published: { name: 'Опубликовано', tone: 'good' },
+  reviewed: { name: 'Отзыв оставлен', tone: 'neutral' },
+  declined: { name: 'Отклонено', tone: 'bad' },
+  cancelled: { name: 'Отменено', tone: 'neutral' },
+  failed: { name: 'Пост не вышел', tone: 'bad' }
+};
+export const AD_COMPLAINT_REASONS = [
+  { id: 'fake_reach', name: 'Накрученный охват' }, { id: 'not_owner', name: 'Продаёт чужой канал' },
+  { id: 'no_post', name: 'Пост не вышел' }, { id: 'other', name: 'Другое' }
+];
+export const AD_REACH_MATCH = [{ id: 'yes', name: 'Да' }, { id: 'partly', name: 'Примерно' }, { id: 'no', name: 'Нет' }];
+// CPM traffic light; thresholds come from the server settings.
+export const CPM_LIGHT = { good: { name: 'выгодно', tone: 'good' }, ok: { name: 'норма', tone: 'warn' }, high: { name: 'дорого', tone: 'bad' } };
 // «Подобрать VPN»: one-tap questions; the server matches on the option ids (lib/pick.js).
 export const PICK_QUESTIONS = [
   { key: 'device', title: 'Где будете пользоваться?', options: [
@@ -121,6 +153,8 @@ export const PROTOCOL = byId(PROTOCOLS);
 export const COUNTRY = byId(COUNTRIES);
 export const PLATFORM = byId(PLATFORMS);
 export const PAYMENT = byId(PAYMENTS);
+export const AD_TOPIC = byId(AD_TOPICS);
+export const AD_FORMAT = byId(AD_FORMATS);
 
 // "2026-09" -> "сентябрь 2026"
 export function monthLabel(period) {

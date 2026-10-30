@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { openDb } from '../server/db.js';
 import { createApp } from '../server/app.js';
-import { signInitData } from '../server/auth.js';
+import { signInitData, grantRole } from '../server/auth.js';
 import { createLoginToken, exchangeLoginToken } from '../server/lib/sessions.js';
 import { invalidate } from '../server/lib/catalog.js';
 import { setClock } from '../server/lib/time.js';
@@ -121,4 +121,36 @@ test('status votes are accepted only from Telegram-signed requests', async () =>
   const { session } = exchangeLoginToken(db, createLoginToken(db, 1), 'test');
   assert.equal((await call(`/api/services/${sid}/vote`, { method: 'POST', auth: `Session ${session}`, body: { value: 'up' } })).status, 403);
   assert.equal((await call(`/api/services/${sid}/vote`, { method: 'POST', body: { value: 'up' } })).status, 401);
+});
+
+test('ad exchange over HTTP: a seller lists a channel, a VPN owner books it, contacts open after agreement', async () => {
+  const seller = tma(60, 'Seller');
+  const created = await call('/api/ads/my', { method: 'POST', auth: seller, body: {
+    link: '@http_channel', title: 'HTTP канал', topic: 'news', subscribers: 10000, reach_24: 4000, reach_48: 5000,
+    formats: { '1/24': 1000 }, free_dates: [], contact: '@http_seller'
+  } });
+  assert.equal(created.status, 200);
+  const ch = created.body.id;
+  const feed = await call('/api/ads/channels?topics=news', { auth: tma(61) });
+  const card = feed.body.items.find((c) => c.id === ch);
+  assert.equal(card.best.cpm, 250);
+  assert.equal(card.best.light, 'good');
+  assert.equal(card.contact, undefined);
+  const date = new Date(Date.now() + 3 * 86400_000 + 3 * 3600_000).toISOString().slice(0, 10);
+  // A client without a VPN can't book; a VPN owner can.
+  assert.equal((await call(`/api/ads/channels/${ch}/deals`, { method: 'POST', auth: tma(61), body: { format: '1/24', date } })).status, 403);
+  await call('/api/me', { auth: tma(62, 'Buyer') }); // the account appears on first sign-in
+  grantRole(db, 62, 'vpn_owner');
+  const booked = await call(`/api/ads/channels/${ch}/deals`, { method: 'POST', auth: tma(62, 'Buyer'), body: { format: '1/24', date } });
+  assert.equal(booked.status, 200);
+  const deal = booked.body.id;
+  assert.equal((await call(`/api/ads/deals/${deal}`, { auth: tma(62) })).body.seller_contact, null);
+  assert.equal((await call(`/api/ads/deals/${deal}/agree`, { method: 'POST', auth: tma(62) })).status, 403);
+  const agreed = await call(`/api/ads/deals/${deal}/agree`, { method: 'POST', auth: seller });
+  assert.equal(agreed.body.status, 'agreed');
+  assert.equal((await call(`/api/ads/deals/${deal}`, { auth: tma(62) })).body.seller_contact, '@http_seller');
+  assert.equal((await call(`/api/ads/deals/${deal}`, { auth: tma(63) })).status, 403);
+  const me = await call('/api/me', { auth: seller });
+  assert.ok(me.body.roles.includes('ad_seller'));
+  assert.equal((await call('/api/me', { method: 'PATCH', auth: seller, body: { active_role: 'ad_seller' } })).status, 200);
 });

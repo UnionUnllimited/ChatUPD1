@@ -1,6 +1,9 @@
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { appLink } from '../config.js';
 import { upsertUser, loadUser } from '../auth.js';
 import { createLoginToken } from './sessions.js';
+import { verifyChannel, unverifyChannel, setTelegramNumbers } from './ads.js';
 
 // Thin Telegram Bot API client for the platform bot: notifications, /start, menu button.
 export function createBot(config, log = console) {
@@ -53,7 +56,8 @@ export function createBot(config, log = console) {
       const soft = (method, body) => api(method, body).catch((e) => log.warn(`${method} failed:`, e.message));
       await soft('setMyDescription', {
         description: 'Линза — честный каталог VPN в Telegram.\n\nСравнивайте цены, протоколы и ручные проверки VPN-сервисов, ' +
-          'сохраняйте избранное и узнавайте о скидках первыми. Рейтинг строится по отзывам, переходам и проверкам и не продаётся.\n\n' +
+          'сохраняйте избранное и узнавайте о скидках первыми. Рейтинг строится по отзывам, переходам и стабильности и не продаётся.\n\n' +
+          'Владельцы VPN находят здесь рекламу в Telegram-каналах, а админы каналов — рекламодателей.\n\n' +
           'Нажмите «Старт», чтобы открыть каталог.'
       });
       await soft('setMyShortDescription', { short_description: 'Честный каталог VPN: цены, проверки, отзывы и топ месяца.' });
@@ -91,6 +95,46 @@ export function createBot(config, log = console) {
       }
     },
 
+    // Ad exchange: a seller proves the channel is theirs by making the bot its admin.
+    async onChannelMember(db, m) {
+      const status = m.new_chat_member.status;
+      if (status !== 'administrator') {
+        if (['left', 'kicked', 'member', 'restricted'].includes(status)) unverifyChannel(db, m.chat.id);
+        return;
+      }
+      const ch = verifyChannel(db, m.from.id, m.chat);
+      const title = String(m.chat.title || '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+      if (!ch) {
+        await this.sendAppMessage(m.from.id, `Бот добавлен в «${title}», но такого канала нет среди ваших объявлений в Линзе. ` +
+          'Добавьте канал в разделе «Реклама» (ссылка должна совпадать) и снова назначьте бота админом.', 'ads_my', 'Мои каналы').catch(() => {});
+        return;
+      }
+      await this.refreshChannel(db, ch).catch((e) => log.warn('channel refresh failed:', e.message));
+      await this.sendAppMessage(m.from.id, `✅ Канал «${title}» подтверждён — на карточке появилась галочка, число подписчиков теперь берётся из Telegram. ` +
+        'Боту не нужны никакие права, кроме статуса админа; если его убрать, галочка пропадёт.', 'ads_my', 'Мои каналы').catch(() => {});
+    },
+
+    // Subscribers and the avatar come straight from Telegram for confirmed channels.
+    async refreshChannel(db, ch) {
+      if (!enabled || !ch.tg_chat_id) return;
+      const subscribers = await api('getChatMemberCount', { chat_id: ch.tg_chat_id }).catch(() => null);
+      let photo = null;
+      const chat = await api('getChat', { chat_id: ch.tg_chat_id }).catch(() => null);
+      if (chat?.photo?.small_file_id) {
+        const file = await api('getFile', { file_id: chat.photo.small_file_id }).catch(() => null);
+        const res = file?.file_path ? await fetch(`https://api.telegram.org/file/bot${config.botToken}/${file.file_path}`).catch(() => null) : null;
+        if (res?.ok) {
+          const buf = Buffer.from(await res.arrayBuffer());
+          if (buf.length && buf.length < 1024 * 1024) {
+            mkdirSync(config.uploadsDir, { recursive: true });
+            writeFileSync(join(config.uploadsDir, `channel-${ch.id}.jpg`), buf);
+            photo = `/uploads/channel-${ch.id}.jpg?v=${Date.now().toString(36)}`;
+          }
+        }
+      }
+      setTelegramNumbers(db, ch.id, { subscribers, photo_url: photo });
+    },
+
     // One-time login link to the admin panel (browser) plus a button to open it inside Telegram.
     async sendAdminLogin(db, userId) {
       const user = loadUser(db, userId, config.adminIds);
@@ -119,6 +163,8 @@ export function createBot(config, log = console) {
         const m = update.my_chat_member;
         if (m.chat.type === 'private') {
           db.run('UPDATE users SET bot_chat_allowed = ? WHERE id = ?', m.new_chat_member.status === 'member' ? 1 : 0, m.from.id);
+        } else if (m.chat.type === 'channel') {
+          await this.onChannelMember(db, m);
         }
         return;
       }
@@ -141,7 +187,7 @@ export function createBot(config, log = console) {
         return;
       }
       if (text.startsWith('/help')) {
-        await this.sendAppMessage(msg.chat.id, 'Здесь приходят уведомления: снижение цен и акции у VPN из избранного, новый топ месяца и статусы модерации для владельцев сервисов. Настроить их можно в профиле.', 'profile');
+        await this.sendAppMessage(msg.chat.id, 'Здесь приходят уведомления: снижение цен и акции у VPN из избранного, новый топ месяца, статусы модерации для владельцев сервисов и заявки биржи рекламы. Настроить их можно в профиле.', 'profile');
       }
     }
   };

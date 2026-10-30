@@ -2,6 +2,7 @@ import { expirePromos } from './moderation.js';
 import { publishTop } from './top.js';
 import { flushOutbox } from './notify.js';
 import { recomputeActive, evaluateTrust } from './health.js';
+import { askReviews } from './ads.js';
 import { previousPeriod, mskDate, mskHour } from './time.js';
 
 // The monthly top is recalculated on the 1st: admins can preview and publish it
@@ -30,6 +31,7 @@ export function startScheduler({ db, bot, config, log = console }) {
   const housekeeping = () => {
     try {
       expirePromos(db);
+      askReviews(db);
       if (autoPublishTop(db, config.topAutoPublishHourMsk)) log.info('Monthly top auto-published for', previousPeriod());
     } catch (e) { log.error('scheduler:', e.message); }
   };
@@ -46,5 +48,14 @@ export function startScheduler({ db, bot, config, log = console }) {
   };
   health();
   timers.push(setInterval(health, 10 * 60_000));
-  return () => timers.forEach(clearInterval);
+  // Confirmed channels: subscribers and avatars from Telegram once a day.
+  const channels = async () => {
+    if (!bot?.enabled) return;
+    for (const ch of db.all('SELECT id, tg_chat_id FROM ad_channels WHERE verified_at IS NOT NULL AND tg_chat_id IS NOT NULL')) {
+      await bot.refreshChannel(db, ch).catch((e) => log.warn('channel refresh:', e.message));
+    }
+  };
+  timers.push(setTimeout(channels, 60_000));
+  timers.push(setInterval(channels, 24 * 3600_000));
+  return () => timers.forEach((t) => { clearInterval(t); clearTimeout(t); });
 }
