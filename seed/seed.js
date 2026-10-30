@@ -374,8 +374,12 @@ db.tx(() => {
 
 // Publish the two finished months so the home screen and the archive have data.
 for (const offset of [-2, -1]) publishTop(db, shiftPeriod(periodOf(ts0), offset), DEV_ADMIN);
-// Seeding must not spam: drop the outbox the publications produced.
+// Seeding must not spam: drop the outbox the publications produced, and mark the one-time
+// reminders as already sent for demo data (the scheduler would nudge demo users otherwise).
 db.run('DELETE FROM notifications');
+db.run('UPDATE services SET fill_reminded_at = ?', ts0);
+db.run('UPDATE ad_channels SET verify_reminded_at = ?', ts0);
+db.run('UPDATE ad_deals SET seller_reminded_at = ?, day_reminded_at = ?, review_asked_at = COALESCE(review_asked_at, ?)', ts0, ts0, ts0);
 
 const n = (sql) => db.get(sql).n;
 console.log(`Seeded ${n('SELECT COUNT(*) n FROM services')} services, ${n('SELECT COUNT(*) n FROM users')} users, ` +

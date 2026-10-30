@@ -77,9 +77,10 @@ test('booking: only VPN owners, offered formats and free dates; contacts open af
   assert.throws(() => bookDeal(db, buyer, ch, { format: '1/24', date: day(4) }), /свободных/);
   const { id } = bookDeal(db, buyer, ch, { format: '1/24', date: day(3), comment: 'Про VPN для игр' });
   assert.throws(() => bookDeal(db, buyer, ch, { format: '2/48', date: day(5) }), /уже есть открытая заявка/);
-  const note = db.get("SELECT text, start_param FROM notifications WHERE user_id = 10 AND type = 'deal'");
+  const note = db.get("SELECT text, start_param, button FROM notifications WHERE user_id = 10 AND type = 'deal' ORDER BY id DESC");
   assert.match(note.text, /Заявка в «Бубсер \| Бравл Старс»: 1\/24 на 5 ноября — 6 000 ₽/);
   assert.equal(note.start_param, `deal_${id}`);
+  assert.equal(note.button, 'Открыть заявку');
 
   // Before agreement nobody sees the other's contact.
   assert.equal(dealView(db, dealRow(db, id), buyer).seller_contact, null);
@@ -169,7 +170,7 @@ test('the bot confirms the real owner; a reseller of the same channel is taken o
   assert.equal(v.id, real);
   assert.ok(v.verified_at);
   assert.equal(db.get('SELECT status FROM ad_channels WHERE id = ?', fake).status, 'blocked');
-  assert.match(db.get('SELECT text FROM notifications WHERE user_id = 40').text, /настоящий владелец/);
+  assert.match(db.get('SELECT text FROM notifications WHERE user_id = 40 ORDER BY id DESC').text, /настоящий владелец/);
   // A new copy of a confirmed channel is blocked right away.
   const { id: again } = createChannel(db, user(42), listing());
   assert.equal(db.get('SELECT status FROM ad_channels WHERE id = ?', again).status, 'blocked');

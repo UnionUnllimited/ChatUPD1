@@ -4,8 +4,7 @@
 import { AD_TOPIC, AD_FORMATS, AD_FORMAT, AD_COMPLAINT_REASONS, AD_REACH_MATCH, AD_DEAL_STATUS } from '../../public/js/dict.js';
 import { HttpError, badRequest, forbidden, notFound } from './http.js';
 import { audit, html } from './moderation.js';
-import { enqueue } from './notify.js';
-import { notifyAdmins } from './health.js';
+import { enqueue, notifyAdmins } from './notify.js';
 import { grantRole } from '../auth.js';
 import { now, mskDay, DAY } from './time.js';
 
@@ -239,7 +238,7 @@ export function sellerChannel(db, user, id) {
   return { ...channelView(row, adConfig(db)), free_dates: parseJSON(row.free_dates, []), contact: row.contact, block_reason: row.block_reason, link: row.link };
 }
 
-export function createChannel(db, user, body) {
+export function createChannel(db, user, body, { botUsername = '' } = {}) {
   const d = validateChannel(body);
   if (db.get('SELECT COUNT(*) n FROM ad_channels WHERE owner_id = ?', user.id).n >= 20) throw badRequest('Не больше 20 каналов на одного продавца');
   if (d.username && db.get('SELECT 1 FROM ad_channels WHERE owner_id = ? AND username = ?', user.id, d.username)) throw badRequest('Этот канал у вас уже есть');
@@ -255,6 +254,11 @@ export function createChannel(db, user, body) {
     // A channel its real admin already confirmed can't be listed by someone else.
     if (d.username && db.get('SELECT 1 FROM ad_channels WHERE username = ? AND verified_at IS NOT NULL AND owner_id != ?', d.username, user.id)) {
       db.run("UPDATE ad_channels SET status = 'blocked', block_reason = ? WHERE id = ?", 'Этот канал уже подтвердил его владелец', id);
+      enqueue(db, user.id, 'deal', `Канал «${html(d.title)}» не опубликован: его уже подтвердил настоящий владелец через бота Линзы.`, `ads_my_${id}`, 'Мой канал');
+    } else {
+      enqueue(db, user.id, 'deal',
+        `📣 Канал «${html(d.title)}» на бирже — владельцы VPN уже видят его в ленте.\n\nСледующий шаг — подтвердите, что канал ваш: добавьте ${botUsername ? `@${html(botUsername)}` : 'бота Линзы'} администратором канала (права не нужны). ` +
+        'Появится галочка «канал подтверждён» — таким каналам покупатели доверяют больше.', `ads_my_${id}`, 'Мой канал');
     }
   });
   return { id };
@@ -308,7 +312,7 @@ export function verifyChannel(db, fromId, chat, ts = now()) {
     if (row.status === 'blocked' && row.block_reason === 'Этот канал уже подтвердил его владелец') db.run("UPDATE ad_channels SET status = 'active', block_reason = NULL WHERE id = ?", row.id);
     for (const o of others) {
       db.run("UPDATE ad_channels SET status = 'blocked', block_reason = ? WHERE id = ?", 'Этот канал подтвердил его владелец', o.id);
-      enqueue(db, o.owner_id, 'deal', `Объявление «${html(o.title)}» снято с биржи: настоящий владелец канала подтвердил его через бота Линзы.`, 'ads_my');
+      enqueue(db, o.owner_id, 'deal', `Объявление «${html(o.title)}» снято с биржи: настоящий владелец канала подтвердил его через бота Линзы.`, 'ads_my', 'Мои каналы');
     }
   });
   return db.get('SELECT * FROM ad_channels WHERE id = ?', row.id);
@@ -357,7 +361,7 @@ export function bookDeal(db, buyer, channelId, body = {}, ts = now()) {
       row.id, row.owner_id, buyer.id, service?.id ?? null, body.format, date, price, comment, ts, ts).lastInsertRowid);
     enqueue(db, row.owner_id, 'deal',
       `📩 Заявка в «${html(row.title)}»: ${AD_FORMAT[body.format].name} на ${dateRu(date)} — ${fmtRub(price)}.\nОт: ${html(userName(db, buyer.id))}${service ? ` (VPN «${html(service.name)}»)` : ''}` +
-      `${comment ? `\n\n«${html(comment)}»` : ''}\n\nПодтвердите или отклоните заявку в Линзе.`, `deal_${id}`);
+      `${comment ? `\n\n«${html(comment)}»` : ''}\n\nПодтвердите или отклоните заявку в Линзе.`, `deal_${id}`, 'Открыть заявку');
   });
   return { id };
 }
@@ -388,11 +392,15 @@ export function decideDeal(db, seller, id, agree, reason = null) {
       db.run("UPDATE ad_deals SET status = 'agreed', decided_at = ?, updated_at = ? WHERE id = ?", ts, ts, id);
       enqueue(db, d.buyer_id, 'deal',
         `✅ «${html(ch.title)}» согласовал размещение ${AD_FORMAT[d.format].name} на ${dateRu(d.date)} — ${fmtRub(d.price)}.\n\n` +
-        `Контакт продавца: ${html(ch.contact)}. Креатив и оплату обсуждайте напрямую.`, `deal_${id}`);
+        `Контакт продавца: ${html(ch.contact)}. Креатив и оплату обсуждайте напрямую.`, `deal_${id}`, 'Открыть сделку');
+      const buyerName = userName(db, d.buyer_id);
+      enqueue(db, d.seller_id, 'deal',
+        `🤝 Вы согласовали ${AD_FORMAT[d.format].name} на ${dateRu(d.date)} в «${html(ch.title)}». Покупатель: ${html(buyerName)}` +
+        `${buyerName.startsWith('@') ? '' : ' (без @username — он напишет вам сам)'}.\n\nПосле публикации отметьте в сделке «Пост вышел».`, `deal_${id}`, 'Открыть сделку');
     } else {
       const why = typeof reason === 'string' ? reason.trim().slice(0, 300) || null : null;
       db.run("UPDATE ad_deals SET status = 'declined', decline_reason = ?, decided_at = ?, updated_at = ? WHERE id = ?", why, ts, ts, id);
-      enqueue(db, d.buyer_id, 'deal', `«${html(ch.title)}» отклонил заявку на ${dateRu(d.date)}.${why ? `\nПричина: ${html(why)}` : ''}`, `deal_${id}`);
+      enqueue(db, d.buyer_id, 'deal', `«${html(ch.title)}» отклонил заявку на ${dateRu(d.date)}.${why ? `\nПричина: ${html(why)}` : ''}\n\nНа бирже есть и другие каналы этой тематики.`, 'ads', 'Открыть биржу');
     }
   });
 }
@@ -407,7 +415,7 @@ export function cancelDeal(db, user, id) {
   db.tx(() => {
     db.run("UPDATE ad_deals SET status = 'cancelled', cancelled_by = ?, updated_at = ? WHERE id = ?", user.id, ts, id);
     const to = who === 'buyer' ? d.seller_id : d.buyer_id;
-    enqueue(db, to, 'deal', `${who === 'buyer' ? 'Покупатель отменил' : 'Продавец отменил'} размещение в «${html(ch.title)}» на ${dateRu(d.date)}.`, `deal_${id}`);
+    enqueue(db, to, 'deal', `${who === 'buyer' ? 'Покупатель отменил' : 'Продавец отменил'} размещение в «${html(ch.title)}» на ${dateRu(d.date)}.`, `deal_${id}`, 'Открыть сделку');
   });
 }
 
@@ -418,6 +426,10 @@ export function markPublished(db, user, id) {
   if (d.status !== 'agreed') throw badRequest('Отметить публикацию можно только в согласованной сделке');
   if (!dateCame(d, ts)) throw badRequest('Дата размещения ещё не наступила');
   db.run("UPDATE ad_deals SET status = 'published', published_at = ?, updated_at = ? WHERE id = ?", ts, ts, id);
+  const ch = channelRow(db, d.channel_id);
+  const sellerMarked = user.id === d.seller_id;
+  enqueue(db, sellerMarked ? d.buyer_id : d.seller_id, 'deal',
+    `📢 ${sellerMarked ? 'Продавец' : 'Покупатель'} отметил, что пост в «${html(ch.title)}» вышел.${sellerMarked ? ' Через 48 часов попросим оценить результат.' : ''}`, `deal_${id}`, 'Открыть сделку');
 }
 
 // Only the buyer, only after the post date. "Пост не вышел" is a review too: it shows up in the channel's history.
@@ -427,8 +439,10 @@ export function reviewDeal(db, buyer, id, body = {}) {
   const ts = now();
   if (!['agreed', 'published'].includes(d.status)) throw badRequest(d.status === 'reviewed' ? 'Отзыв уже оставлен' : 'Отзыв можно оставить по согласованной сделке');
   if (!dateCame(d, ts)) throw badRequest('Отзыв можно оставить после даты размещения');
+  const ch = channelRow(db, d.channel_id);
   if (body.published === false) {
     db.run("UPDATE ad_deals SET status = 'failed', updated_at = ? WHERE id = ?", ts, id);
+    enqueue(db, d.seller_id, 'deal', `Покупатель отметил, что пост в «${html(ch.title)}» на ${dateRu(d.date)} не вышел. Если это ошибка — свяжитесь с ним.`, `deal_${id}`, 'Открыть сделку');
     return { status: 'failed' };
   }
   const rating = int(body.rating, 1, 5, 'Поставьте оценку от 1 до 5');
@@ -441,6 +455,9 @@ export function reviewDeal(db, buyer, id, body = {}) {
     db.run('INSERT INTO ad_reviews (deal_id, channel_id, buyer_id, rating, came, payments, reach_match, text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       id, d.channel_id, buyer.id, rating, came, payments, reach, text, ts);
     db.run("UPDATE ad_deals SET status = 'reviewed', published_at = COALESCE(published_at, ?), updated_at = ? WHERE id = ?", ts, ts, id);
+    const facts = [came !== null ? `пришло ${came}` : '', payments !== null ? `оплат ${payments}` : ''].filter(Boolean).join(', ');
+    enqueue(db, d.seller_id, 'deal', `⭐ Покупатель оценил размещение в «${html(ch.title)}»: ${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}${facts ? ` — ${facts}` : ''}. Отзыв уже на странице канала.`,
+      `ad_${ch.id}`, 'Открыть канал');
   });
   return { status: 'reviewed' };
 }
@@ -490,7 +507,7 @@ export function askReviews(db, ts = now()) {
     const postAt = Date.parse(`${d.date}T12:00:00+03:00`);
     if (ts < postAt + cfg.review_after_h * HOUR) continue;
     db.run('UPDATE ad_deals SET review_asked_at = ? WHERE id = ?', ts, d.id);
-    enqueue(db, d.buyer_id, 'deal', `Как прошло размещение в «${html(d.title)}» ${dateRu(d.date)}? Отметьте, сколько пришло и сколько оплат — из этих отзывов складывается рейтинг канала.`, `deal_${d.id}`);
+    enqueue(db, d.buyer_id, 'deal', `Как прошло размещение в «${html(d.title)}» ${dateRu(d.date)}? Отметьте, сколько пришло и сколько оплат — из этих отзывов складывается рейтинг канала.`, `deal_${d.id}`, 'Оставить отзыв');
     n++;
   }
   return n;
@@ -520,7 +537,7 @@ export function complain(db, user, channelId, body = {}, { envAdmins = [] } = {}
       db.run("UPDATE ad_channels SET status = 'review', updated_at = ? WHERE id = ?", now(), channelId);
       review = true;
       notifyAdmins(db, envAdmins, `🚩 Канал «${html(row.title)}» снят с биржи на проверку: ${open} ${open < 5 ? 'жалобы' : 'жалоб'}.`, 'admin_ads');
-      enqueue(db, row.owner_id, 'deal', `Объявление «${html(row.title)}» временно скрыто: на него пожаловались несколько покупателей. Администратор проверит его.`, 'ads_my');
+      enqueue(db, row.owner_id, 'deal', `Объявление «${html(row.title)}» временно скрыто: на него пожаловались несколько покупателей. Администратор проверит его.`, 'ads_my', 'Мои каналы');
     }
   });
   return { review };
@@ -549,12 +566,12 @@ export function adminSetChannel(db, admin, id, action, note = null) {
     if (action === 'restore') {
       db.run("UPDATE ad_channels SET status = 'active', block_reason = NULL, updated_at = ? WHERE id = ?", ts, id);
       db.run('UPDATE ad_complaints SET resolved_at = ? WHERE channel_id = ? AND resolved_at IS NULL', ts, id);
-      if (row.status !== 'active') enqueue(db, row.owner_id, 'deal', `Объявление «${html(row.title)}» снова на бирже — администратор проверил его.`, 'ads_my');
+      if (row.status !== 'active') enqueue(db, row.owner_id, 'deal', `Объявление «${html(row.title)}» снова на бирже — администратор проверил его.`, 'ads_my', 'Мои каналы');
     } else if (action === 'block') {
       const why = typeof note === 'string' ? note.trim().slice(0, 300) || 'Нарушение правил биржи' : 'Нарушение правил биржи';
       db.run("UPDATE ad_channels SET status = 'blocked', block_reason = ?, updated_at = ? WHERE id = ?", why, ts, id);
       db.run('UPDATE ad_complaints SET resolved_at = ? WHERE channel_id = ? AND resolved_at IS NULL', ts, id);
-      enqueue(db, row.owner_id, 'deal', `Объявление «${html(row.title)}» снято с биржи. Причина: ${html(why)}`, 'ads_my');
+      enqueue(db, row.owner_id, 'deal', `Объявление «${html(row.title)}» снято с биржи. Причина: ${html(why)}`, 'ads_my', 'Мои каналы');
     } else if (action === 'verify') {
       db.run('UPDATE ad_channels SET verified_at = COALESCE(verified_at, ?), updated_at = ? WHERE id = ?', ts, ts, id);
     } else if (action === 'unverify') {

@@ -1,5 +1,5 @@
 import { api, get, put, del } from './api.js';
-import { haptic } from './tg.js';
+import { haptic, requestWriteAccess } from './tg.js';
 import { toast, toastError } from './ui.js';
 
 const COMPARE_KEY = 'linza_compare';
@@ -36,6 +36,18 @@ export async function loadMe() {
 }
 
 export const hasRole = (role) => Boolean(store.me?.roles.includes(role));
+
+// The bot can write only to people who started it or allowed messages. Asked right where a reply
+// is promised (an application, a listed channel, a booking), never on a plain visit.
+export async function ensureBotChat() {
+  if (!store.me || store.me.bot_chat_allowed) return true;
+  const ok = await requestWriteAccess();
+  if (ok) {
+    await api('/api/me/bot-access', { method: 'POST' }).catch(() => {});
+    store.me.bot_chat_allowed = true;
+  }
+  return ok;
+}
 
 export async function toggleFavorite(id) {
   if (!store.me) { toast('Откройте Линзу в Telegram, чтобы сохранять избранное'); return false; }

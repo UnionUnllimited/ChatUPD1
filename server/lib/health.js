@@ -12,7 +12,7 @@ import { now, DAY } from './time.js';
 import { badRequest, forbidden, notFound, HttpError } from './http.js';
 import { DEFAULT_SETTINGS } from '../db.js';
 import { STATUS_CONFIG_FIELDS, NETWORK, HEALTH } from '../../public/js/dict.js';
-import { enqueue } from './notify.js';
+import { enqueue, notifyAdmins } from './notify.js';
 import { audit, html, canReview, ownedService } from './moderation.js';
 import { invalidate } from './catalog.js';
 
@@ -42,13 +42,7 @@ export function validateStatusConfig(input) {
 
 /* ---------------- Notifications ---------------- */
 
-// Admins hear about health only for disputes and anomalies (and the ad exchange about its review queue).
-export function notifyAdmins(db, envAdmins, text, startParam = 'admin_status') {
-  const ids = new Set([...envAdmins, ...db.all("SELECT user_id FROM user_roles WHERE role = 'admin'").map((r) => r.user_id)]);
-  for (const id of ids) {
-    if (db.get('SELECT 1 FROM users WHERE id = ? AND is_blocked = 0', id)) enqueue(db, id, 'admin', text, startParam);
-  }
-}
+export { notifyAdmins }; // lives in notify.js; re-exported for existing imports
 
 const networksText = (byNet) => Object.entries(byNet).sort((a, b) => b[1] - a[1]).map(([n, c]) => `${NETWORK[n]?.name || n} — ${c}`).join(', ');
 

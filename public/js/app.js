@@ -223,7 +223,9 @@ function routeFromStartParam(p) {
   if ((m = p.match(/^admin_([a-z]+)$/))) return `/admin/${m[1]}`;
   if ((m = p.match(/^deal_(\d+)$/))) return `/ads/deals/${m[1]}`;
   if ((m = p.match(/^ad_(\d+)$/))) return `/ads/${m[1]}`;
+  if ((m = p.match(/^ads_my_(\d+)$/))) return `/ads/my/${m[1]}`;
   if (p === 'ads_my') return '/ads/my';
+  if (p === 'reviews') return '/profile/reviews';
   if (p === 'ads') return '/ads';
   if (['owner', 'top', 'profile', 'admin', 'catalog', 'compare', 'favorites', 'pick'].includes(p)) return `/${p}`;
   return null;

@@ -16,8 +16,18 @@ export function setNotifySettings(db, userId, patch) {
   return notifySettings(db, userId);
 }
 
-export function enqueue(db, userId, type, text, startParam = null) {
-  db.run('INSERT INTO notifications (user_id, type, text, start_param, created_at) VALUES (?, ?, ?, ?, ?)', userId, type, text, startParam, now());
+// `button` is the text of the button that opens the Mini App at `startParam` (default «Открыть в Линзе»).
+export function enqueue(db, userId, type, text, startParam = null, button = null) {
+  db.run('INSERT INTO notifications (user_id, type, text, start_param, button, created_at) VALUES (?, ?, ?, ?, ?, ?)', userId, type, text, startParam, button, now());
+}
+
+// Admins hear only about what needs them: new applications and moderation, disputes, anomalies, complaints.
+// ADMIN_IDS from the environment plus everyone given the admin role in the panel.
+export function notifyAdmins(db, envAdmins, text, startParam = 'admin_status', button = 'Открыть в панели') {
+  const ids = new Set([...envAdmins, ...db.all("SELECT user_id FROM user_roles WHERE role = 'admin'").map((r) => r.user_id)]);
+  for (const id of ids) {
+    if (db.get('SELECT 1 FROM users WHERE id = ? AND is_blocked = 0', id)) enqueue(db, id, 'admin', text, startParam, button);
+  }
 }
 
 const enabledFilter = `NOT EXISTS (SELECT 1 FROM user_notify n WHERE n.user_id = u.id AND n.type = ? AND n.enabled = 0)`;
@@ -49,7 +59,7 @@ export async function flushOutbox(db, bot, limit = 25) {
       continue;
     }
     try {
-      await bot.sendAppMessage(n.user_id, n.text, n.start_param);
+      await bot.sendAppMessage(n.user_id, n.text, n.start_param, n.button || undefined);
       db.run("UPDATE notifications SET status = 'sent', sent_at = ? WHERE id = ?", now(), n.id);
     } catch (e) {
       if (e.retryAfter) return 0; // flood control: leave the rest queued

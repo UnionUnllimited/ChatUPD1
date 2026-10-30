@@ -5,7 +5,14 @@ import { now } from './time.js';
 import { badRequest, forbidden, notFound, HttpError } from './http.js';
 import { grantRole } from '../auth.js';
 import { invalidate, monthlyOf, recomputeMarketAverage, rowToCard, tariffsOf } from './catalog.js';
-import { enqueue, notifyFavorites } from './notify.js';
+import { enqueue, notifyFavorites, notifyAdmins } from './notify.js';
+
+// "@username" or the first name, for messages to admins and counterparts.
+export const userLabel = (db, id) => {
+  const u = db.get('SELECT username, first_name FROM users WHERE id = ?', id);
+  return u?.username ? `@${u.username}` : u?.first_name || `id ${id}`;
+};
+const starsText = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
 export const html = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const rub = (n) => `${n.toLocaleString('ru-RU')} ₽`;
@@ -31,13 +38,18 @@ export function ownedService(db, user, serviceId) {
 
 /* ---------------- Applications: "Добавить VPN" ---------------- */
 
-export function createApplication(db, user, data) {
+export function createApplication(db, user, data, { envAdmins = [] } = {}) {
   const pending = db.get("SELECT COUNT(*) n FROM applications WHERE user_id = ? AND status = 'pending'", user.id).n;
   if (pending >= 3) throw badRequest('У вас уже есть заявки на проверке');
   const dup = db.get("SELECT id FROM applications WHERE link = ? AND status IN ('pending', 'approved')", data.link);
   if (dup) throw badRequest('Этот бот или канал уже подан на подключение');
   const r = db.run('INSERT INTO applications (user_id, name, link, contact, comment, created_at) VALUES (?, ?, ?, ?, ?, ?)',
     user.id, data.name, data.link, data.contact, data.comment, now());
+  enqueue(db, user.id, 'moderation',
+    `📨 Заявка «${html(data.name)}» принята.\n\nАдминистратор проверит, что сервис ваш, — обычно это занимает до суток. Ответ придёт сюда.`, 'owner', 'Кабинет VPN');
+  notifyAdmins(db, envAdmins,
+    `🆕 Заявка на подключение: «${html(data.name)}» — ${html(data.link)}\nОт: ${html(userLabel(db, user.id))}, контакт: ${html(data.contact)}${data.comment ? `\n\n«${html(data.comment)}»` : ''}`,
+    'admin_applications', 'Открыть заявки');
   return db.get('SELECT * FROM applications WHERE id = ?', r.lastInsertRowid);
 }
 
@@ -52,7 +64,8 @@ export function approveApplication(db, admin, id) {
     grantRole(db, app.user_id, 'vpn_owner');
     audit(db, admin.id, 'application.approve', 'application', id, { service_id: serviceId, name: app.name });
     enqueue(db, app.user_id, 'moderation',
-      `✅ Заявка «${html(app.name)}» одобрена. Кабинет VPN-сервиса открыт: заполните карточку и тарифы — после модерации они появятся в каталоге.`, `owner_${serviceId}`);
+      `✅ Заявка «${html(app.name)}» одобрена — кабинет VPN-сервиса открыт.\n\nСледующий шаг — заполните карточку: описание, тарифы, протоколы, страны и способы оплаты. После модерации она появится в каталоге.`,
+      `owner_${serviceId}`, 'Заполнить карточку');
     return { service_id: serviceId };
   });
 }
@@ -62,19 +75,25 @@ export function rejectApplication(db, admin, id, reason) {
     const app = pendingOrThrow(db.get('SELECT * FROM applications WHERE id = ?', id), 'Заявка');
     db.run("UPDATE applications SET status = 'rejected', reject_reason = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?", reason, admin.id, now(), id);
     audit(db, admin.id, 'application.reject', 'application', id, { reason, name: app.name });
-    enqueue(db, app.user_id, 'moderation', `❌ Заявка «${html(app.name)}» отклонена.\nПричина: ${html(reason)}`, 'owner');
+    enqueue(db, app.user_id, 'moderation', `❌ Заявка «${html(app.name)}» отклонена.\nПричина: ${html(reason)}\n\nМожно исправить и подать заявку снова.`, 'owner', 'Кабинет VPN');
   });
 }
 
 /* ---------------- Card revisions ---------------- */
 
-export function submitRevision(db, user, serviceId, card) {
-  ownedService(db, user, serviceId);
+export function submitRevision(db, user, serviceId, card, { envAdmins = [] } = {}) {
+  const svc = ownedService(db, user, serviceId);
+  const first = svc.status !== 'published';
   return db.tx(() => {
     // Only the latest submission matters; older pending ones are replaced.
     db.run("UPDATE service_revisions SET status = 'superseded' WHERE service_id = ? AND status = 'pending'", serviceId);
     const r = db.run('INSERT INTO service_revisions (service_id, author_id, data, created_at) VALUES (?, ?, ?, ?)',
       serviceId, user.id, JSON.stringify(card), now());
+    enqueue(db, user.id, 'moderation', first
+      ? `📝 Карточка «${html(card.name)}» отправлена на модерацию. Обычно проверка занимает до суток — напишем, когда она появится в каталоге.`
+      : `📝 Изменения карточки «${html(card.name)}» отправлены на модерацию. Пока их не одобрят, клиенты видят прежнюю версию.`, `owner_${serviceId}`, 'Кабинет VPN');
+    notifyAdmins(db, envAdmins, `📝 На модерации ${first ? 'новая карточка' : 'изменения карточки'} «${html(card.name)}» от ${html(userLabel(db, user.id))}.`,
+      'admin_moderation', 'Открыть модерацию');
     return Number(r.lastInsertRowid);
   });
 }
@@ -122,9 +141,10 @@ export function approveRevision(db, admin, revId, { uploadsDir }) {
     audit(db, admin.id, 'revision.approve', 'service', rev.service_id, { revision_id: revId });
 
     const first = before.status !== 'published';
-    enqueue(db, before.owner_id, 'moderation',
-      first ? `✅ Карточка «${html(card.name)}» опубликована в каталоге Линзы.` : `✅ Изменения карточки «${html(card.name)}» опубликованы.`,
-      `owner_${rev.service_id}`);
+    enqueue(db, before.owner_id, 'moderation', first
+      ? `🎉 Карточка «${html(card.name)}» опубликована — теперь она в каталоге Линзы.\n\nЧто дальше: добавьте акцию — она попадёт в «Скидки и акции», следите за статистикой и отзывами. Рекламу в Telegram-каналах можно найти на бирже.`
+      : `✅ Изменения карточки «${html(card.name)}» опубликованы.`,
+      first ? `s_${rev.service_id}` : `owner_${rev.service_id}`, first ? 'Открыть карточку' : 'Кабинет VPN');
     if (!first && before.min_monthly && min < before.min_monthly) {
       notifyFavorites(db, rev.service_id, 'price_drop',
         `📉 <b>${html(card.name)}</b> подешевел: от ${rub(min)}/мес вместо ${rub(before.min_monthly)}.`, `s_${rev.service_id}`);
@@ -137,9 +157,10 @@ export function rejectRevision(db, admin, revId, reason) {
   return db.tx(() => {
     const rev = pendingOrThrow(db.get('SELECT * FROM service_revisions WHERE id = ?', revId), 'Версия карточки');
     db.run("UPDATE service_revisions SET status = 'rejected', reject_reason = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?", reason, admin.id, now(), revId);
-    const svc = db.get('SELECT owner_id, name FROM services WHERE id = ?', rev.service_id);
+    const svc = db.get('SELECT owner_id, name, status FROM services WHERE id = ?', rev.service_id);
     audit(db, admin.id, 'revision.reject', 'service', rev.service_id, { revision_id: revId, reason });
-    enqueue(db, svc.owner_id, 'moderation', `❌ Изменения карточки «${html(svc.name)}» отклонены.\nПричина: ${html(reason)}`, `owner_${rev.service_id}`);
+    enqueue(db, svc.owner_id, 'moderation', `❌ ${svc.status === 'published' ? 'Изменения карточки' : 'Карточка'} «${html(svc.name)}» не прошла модерацию.\nПричина: ${html(reason)}\n\nИсправьте и отправьте снова.`,
+      `owner_${rev.service_id}`, 'Исправить карточку');
   });
 }
 
@@ -156,7 +177,7 @@ export function revisionDiff(db, rev) {
 
 /* ---------------- Promotions ---------------- */
 
-export function createPromo(db, user, serviceId, data) {
+export function createPromo(db, user, serviceId, data, { envAdmins = [] } = {}) {
   const s = ownedService(db, user, serviceId);
   if (s.status !== 'published') throw badRequest('Акции доступны после публикации карточки');
   const active = db.get("SELECT COUNT(*) n FROM promotions WHERE service_id = ? AND status IN ('pending', 'approved') AND ends_at > ?", serviceId, now()).n;
@@ -164,6 +185,8 @@ export function createPromo(db, user, serviceId, data) {
   const r = db.run(
     'INSERT INTO promotions (service_id, title, description, discount_percent, promo_code, starts_at, ends_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     serviceId, data.title, data.description, data.discount_percent, data.promo_code, data.starts_at, data.ends_at, now());
+  enqueue(db, user.id, 'moderation', `🏷 Акция «${html(data.title)}» отправлена на модерацию — напишем, когда она появится в «Скидках и акциях».`, `owner_${serviceId}`, 'Кабинет VPN');
+  notifyAdmins(db, envAdmins, `🏷 На модерации акция «${html(data.title)}» у «${html(s.name)}».`, 'admin_moderation', 'Открыть модерацию');
   return db.get('SELECT * FROM promotions WHERE id = ?', r.lastInsertRowid);
 }
 
@@ -175,7 +198,7 @@ export function approvePromo(db, admin, id) {
     db.run("UPDATE promotions SET status = 'approved', reviewed_by = ?, reviewed_at = ? WHERE id = ?", admin.id, ts, id);
     const svc = db.get('SELECT owner_id, name FROM services WHERE id = ?', p.service_id);
     audit(db, admin.id, 'promo.approve', 'promotion', id, { service_id: p.service_id, title: p.title });
-    enqueue(db, svc.owner_id, 'moderation', `✅ Акция «${html(p.title)}» одобрена и появится в блоке «Скидки и акции».`, `owner_${p.service_id}`);
+    enqueue(db, svc.owner_id, 'moderation', `✅ Акция «${html(p.title)}» одобрена и появится в блоке «Скидки и акции». Подписчики «${html(svc.name)}» получат уведомление.`, `owner_${p.service_id}`, 'Кабинет VPN');
     const when = p.starts_at > ts ? ` с ${dateRu(p.starts_at)}` : '';
     notifyFavorites(db, p.service_id, 'promo',
       `🏷 Акция у <b>${html(svc.name)}</b>${when}: ${html(p.title)}${p.discount_percent ? ` (−${p.discount_percent}%)` : ''}. До ${dateRu(p.ends_at)}.`, `s_${p.service_id}`);
@@ -189,7 +212,7 @@ export function rejectPromo(db, admin, id, reason) {
     db.run("UPDATE promotions SET status = 'rejected', reject_reason = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?", reason, admin.id, now(), id);
     const svc = db.get('SELECT owner_id FROM services WHERE id = ?', p.service_id);
     audit(db, admin.id, 'promo.reject', 'promotion', id, { reason, title: p.title });
-    enqueue(db, svc.owner_id, 'moderation', `❌ Акция «${html(p.title)}» отклонена.\nПричина: ${html(reason)}`, `owner_${p.service_id}`);
+    enqueue(db, svc.owner_id, 'moderation', `❌ Акция «${html(p.title)}» отклонена.\nПричина: ${html(reason)}`, `owner_${p.service_id}`, 'Кабинет VPN');
   });
 }
 
@@ -235,6 +258,19 @@ export function deleteReview(db, user, id) {
   invalidate();
 }
 
+function reviewNotices(db, r, status, reason) {
+  const svc = db.get('SELECT id, name, owner_id FROM services WHERE id = ?', r.service_id);
+  if (!svc) return;
+  if (status === 'approved') {
+    enqueue(db, r.user_id, 'moderation', `⭐ Ваш отзыв о «${html(svc.name)}» опубликован. Спасибо — он помогает другим выбрать VPN.`, `s_${svc.id}`, 'Открыть VPN');
+    if (svc.owner_id && svc.owner_id !== r.user_id) {
+      enqueue(db, svc.owner_id, 'moderation', `💬 Новый отзыв о «${html(svc.name)}»: ${starsText(r.rating)}\n\n«${html(String(r.text).slice(0, 300))}»`, `s_${svc.id}`, 'Открыть отзывы');
+    }
+  } else {
+    enqueue(db, r.user_id, 'moderation', `Отзыв о «${html(svc.name)}» не прошёл модерацию.${reason ? `\nПричина: ${html(reason)}` : ''}\n\nЕго можно исправить в профиле.`, 'reviews', 'Мои отзывы');
+  }
+}
+
 // Panel: change a review's status at any time (e.g. take down an already published one).
 export function setReviewStatus(db, admin, id, status, reason = null) {
   if (!['approved', 'rejected'].includes(status)) throw badRequest('Неверный статус');
@@ -244,6 +280,7 @@ export function setReviewStatus(db, admin, id, status, reason = null) {
     if (status === 'rejected' && !reason) throw badRequest('Укажите причину');
     db.run('UPDATE reviews SET status = ?, reject_reason = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?', status, status === 'rejected' ? reason : null, admin.id, now(), id);
     audit(db, admin.id, status === 'approved' ? 'review.approve' : 'review.reject', 'review', id, { service_id: r.service_id, reason, was: r.status });
+    if (r.status !== status) reviewNotices(db, r, status, reason);
     invalidate();
   });
 }
@@ -254,6 +291,7 @@ export function moderateReview(db, admin, id, approve, reason = null) {
     db.run('UPDATE reviews SET status = ?, reject_reason = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?',
       approve ? 'approved' : 'rejected', reason, admin.id, now(), id);
     audit(db, admin.id, approve ? 'review.approve' : 'review.reject', 'review', id, { service_id: r.service_id, reason });
+    reviewNotices(db, r, approve ? 'approved' : 'rejected', reason);
     invalidate();
   });
 }

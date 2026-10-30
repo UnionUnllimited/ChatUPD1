@@ -1,5 +1,5 @@
 import { get, post, del } from '../api.js';
-import { store, loadMe } from '../store.js';
+import { store, loadMe, ensureBotChat } from '../store.js';
 import { haptic, setMain, mainProgress, confirmDialog } from '../tg.js';
 import {
   $, $$, esc, rub, fmt, plural, icon, logoHTML, emptyHTML, dateShort, dateLong, segHTML, bindSeg,
@@ -111,6 +111,7 @@ export async function ownerApply(root, { navigate }) {
       await post('/api/owner/applications', data);
       haptic.notify('success');
       toast('Заявка отправлена — пришлём ответ в бот');
+      await ensureBotChat();
       await loadMe();
       navigate('/profile', { replace: true });
     } catch (e) {

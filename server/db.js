@@ -444,7 +444,14 @@ export const DEFAULT_SETTINGS = {
 
 // Columns added after the first release; CREATE TABLE IF NOT EXISTS does not add them to old databases.
 const COLUMNS = [
-  ['users', 'trust_score', 'REAL NOT NULL DEFAULT 1.0']
+  ['users', 'trust_score', 'REAL NOT NULL DEFAULT 1.0'],
+  // Bot messages: the text of the button that opens the Mini App ("Заполнить карточку", ...).
+  ['notifications', 'button', 'TEXT'],
+  // One-time nudges, so a reminder is never sent twice.
+  ['services', 'fill_reminded_at', 'INTEGER'],
+  ['ad_channels', 'verify_reminded_at', 'INTEGER'],
+  ['ad_deals', 'seller_reminded_at', 'INTEGER'],
+  ['ad_deals', 'day_reminded_at', 'INTEGER']
 ];
 function migrate(raw) {
   for (const [table, column, ddl] of COLUMNS) {

@@ -25,7 +25,7 @@ export function adsRoutes(r, { db, config }) {
     return { channels: myChannels(db, requireUser(ctx)), config: { cpm_good: cfg.cpm_good, cpm_ok: cfg.cpm_ok } };
   });
   r.get('/api/ads/my/:id', (ctx) => sellerChannel(db, requireUser(ctx), intParam(ctx.params.id)));
-  r.post('/api/ads/my', (ctx) => createChannel(db, requireUser(ctx), ctx.body));
+  r.post('/api/ads/my', (ctx) => createChannel(db, requireUser(ctx), ctx.body, { botUsername: config.botUsername }));
   r.put('/api/ads/my/:id', (ctx) => updateChannel(db, requireUser(ctx), intParam(ctx.params.id), ctx.body));
   r.post('/api/ads/my/:id/visibility', (ctx) => {
     setChannelVisible(db, requireUser(ctx), intParam(ctx.params.id), Boolean(ctx.body?.visible));

@@ -9,7 +9,8 @@ const latestRevision = (db, serviceId) => db.get(
   "SELECT id, status, reject_reason, created_at, reviewed_at FROM service_revisions WHERE service_id = ? AND status != 'superseded' ORDER BY id DESC LIMIT 1",
   serviceId) || null;
 
-export function ownerRoutes(r, { db }) {
+export function ownerRoutes(r, { db, config }) {
+  const opts = { envAdmins: config?.adminIds || [] };
   r.get('/api/owner', (ctx) => {
     const u = requireUser(ctx);
     return {
@@ -21,7 +22,7 @@ export function ownerRoutes(r, { db }) {
 
   r.post('/api/owner/applications', (ctx) => {
     const u = requireUser(ctx);
-    return { application: createApplication(db, u, validateApplication(ctx.body)) };
+    return { application: createApplication(db, u, validateApplication(ctx.body), opts) };
   });
 
   r.get('/api/owner/services/:id', (ctx) => {
@@ -43,7 +44,7 @@ export function ownerRoutes(r, { db }) {
     const u = requireRole(ctx, 'vpn_owner');
     const id = intParam(ctx.params.id);
     ownedService(db, u, id);
-    return { revision_id: submitRevision(db, u, id, validateCard(ctx.body)) };
+    return { revision_id: submitRevision(db, u, id, validateCard(ctx.body), opts) };
   });
 
   r.get('/api/owner/services/:id/promos', (ctx) => {
@@ -54,7 +55,7 @@ export function ownerRoutes(r, { db }) {
 
   r.post('/api/owner/services/:id/promos', (ctx) => {
     const u = requireRole(ctx, 'vpn_owner');
-    return { promo: createPromo(db, u, intParam(ctx.params.id), validatePromo(ctx.body, now())) };
+    return { promo: createPromo(db, u, intParam(ctx.params.id), validatePromo(ctx.body, now()), opts) };
   });
 
   r.delete('/api/owner/promos/:id', (ctx) => {

@@ -49,7 +49,13 @@ test('application approval opens the owner cabinet', () => {
   const { service_id } = approveApplication(db, admin, app.id);
   assert.ok(loadUser(db, 10).roles.includes('vpn_owner'));
   assert.equal(db.get('SELECT status FROM services WHERE id = ?', service_id).status, 'draft');
-  assert.equal(db.get("SELECT COUNT(*) n FROM notifications WHERE user_id = 10 AND type = 'moderation'").n, 1);
+  // The owner hears both steps: the application is received, then approved with the next step.
+  const msgs = db.all("SELECT text, start_param, button FROM notifications WHERE user_id = 10 AND type = 'moderation' ORDER BY id");
+  assert.equal(msgs.length, 2);
+  assert.match(msgs[0].text, /Заявка «Новый» принята/);
+  assert.match(msgs[1].text, /одобрена.*\n\nСледующий шаг — заполните карточку/s);
+  assert.equal(msgs[1].start_param, `owner_${service_id}`);
+  assert.equal(msgs[1].button, 'Заполнить карточку');
   assert.equal(db.get("SELECT action FROM audit_log ORDER BY id DESC").action, 'application.approve');
   assert.throws(() => approveApplication(db, admin, app.id), /уже рассмотрена/);
 });

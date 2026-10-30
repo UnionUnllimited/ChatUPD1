@@ -1,7 +1,7 @@
 // Ad exchange: channel admins list ad slots, VPN owners book them. Deals are settled
 // directly in Telegram for now; Линза shows CPM, opens contacts and collects buyers' reviews.
 import { get, post, put, del, qs } from '../api.js';
-import { store, hasRole, loadMe } from '../store.js';
+import { store, hasRole, loadMe, ensureBotChat } from '../store.js';
 import { haptic, setMain, mainProgress, confirmDialog, openLink } from '../tg.js';
 import {
   $, $$, esc, rub, plural, icon, logoHTML, emptyHTML, skeletonHTML, errorHTML, segHTML, bindSeg, renderList,
@@ -289,7 +289,8 @@ function bookingSheet(c, navigate) {
           const r = await post(`/api/ads/channels/${c.id}/deals`, body);
           haptic.notify('success');
           closeSheet(true);
-          toast('Заявка отправлена продавцу');
+          toast('Заявка отправлена продавцу — ответ придёт в бот');
+          await ensureBotChat();
           navigate(`/ads/deals/${r.id}`);
         } catch (e) { $('#bErr', sheet).textContent = e.message; $('#bErr', sheet).hidden = false; }
       }
@@ -614,6 +615,7 @@ export async function adEditor(root, { params, navigate }) {
       const r = isNew ? await post('/api/ads/my', body) : await put(`/api/ads/my/${params.id}`, body);
       haptic.notify('success');
       if (isNew) {
+        await ensureBotChat();
         await loadMe().catch(() => {});
         toast('Канал на бирже. Подтвердите его — добавьте бота админом канала');
         navigate(`/ads/my/${r.id}`, { replace: true });
