@@ -6,6 +6,11 @@ export class HttpError extends Error {
   }
 }
 
+// Returned by a handler to send something other than JSON (e.g. a CSV export).
+export class RawResponse {
+  constructor(body, headers) { this.body = body; this.headers = headers; }
+}
+
 export const badRequest = (msg) => new HttpError(400, msg, 'bad_request');
 export const forbidden = (msg = 'Нет доступа') => new HttpError(403, msg, 'forbidden');
 export const notFound = (msg = 'Не найдено') => new HttpError(404, msg, 'not_found');

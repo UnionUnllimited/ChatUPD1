@@ -1,5 +1,6 @@
 import { initTelegram, startParam, setMain, haptic } from './tg.js';
 import { $, $$, moveIndicator, applyLens, setRouteBack, closeSheet, sheetIsOpen, icon, errorHTML, toastError } from './ui.js';
+import { appUrl } from './api.js';
 import { store, subscribe, loadMe, toggleFavorite, toggleCompare } from './store.js';
 import home from './views/home.js';
 import catalog from './views/catalog.js';
@@ -8,18 +9,22 @@ import compare from './views/compare.js';
 import favorites from './views/favorites.js';
 import { profile, myReviews, history as historyView, notifySettings } from './views/profile.js';
 import { ownerHome, ownerApply, ownerService } from './views/owner.js';
-import { adminHome, adminApplications, adminModeration, adminChecks, adminTop, adminUsers, adminLog } from './views/admin.js';
 import { topArchive } from './views/top.js';
 
 const ROOT_TABS = ['/', '/catalog', '/compare', '/favorites', '/profile'];
+
+// Admin screens live in the separate panel (public/admin/); old links land there.
+function toPanel(root, { path, query }) {
+  const q = new URLSearchParams(query).toString();
+  location.replace(appUrl('admin/') + '#' + path + (q ? `?${q}` : ''));
+}
 
 const routes = [
   ['/', home], ['/catalog', catalog], ['/compare', compare], ['/favorites', favorites], ['/profile', profile],
   ['/service/:id', service], ['/top', topArchive], ['/top/:period', topArchive],
   ['/profile/reviews', myReviews], ['/profile/history', historyView], ['/profile/notify', notifySettings],
   ['/owner', ownerHome], ['/owner/apply', ownerApply], ['/owner/:id', ownerService],
-  ['/admin', adminHome], ['/admin/applications', adminApplications], ['/admin/moderation', adminModeration],
-  ['/admin/checks', adminChecks], ['/admin/top', adminTop], ['/admin/users', adminUsers], ['/admin/log', adminLog]
+  ['/admin', toPanel], ['/admin/:section', toPanel]
 ].map(([pattern, view]) => {
   const keys = [];
   const re = new RegExp('^' + pattern.replace(/:(\w+)/g, (_, k) => { keys.push(k); return '([^/]+)'; }) + '$');

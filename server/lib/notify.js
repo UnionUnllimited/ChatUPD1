@@ -1,7 +1,7 @@
 import { now } from './time.js';
 
 // Types a user can switch off in the profile. Moderation statuses are always delivered.
-export const OPTIONAL_TYPES = ['price_drop', 'promo', 'top'];
+export const OPTIONAL_TYPES = ['price_drop', 'promo', 'top', 'news'];
 
 export function notifySettings(db, userId) {
   const rows = new Map(db.all('SELECT type, enabled FROM user_notify WHERE user_id = ?', userId).map((r) => [r.type, r.enabled]));

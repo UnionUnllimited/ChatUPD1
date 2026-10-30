@@ -115,7 +115,7 @@ function readLogo(file) {
   });
 }
 
-function editorHTML(d) {
+export function editorHTML(d) {
   return `
     <form class="stack" id="cardForm" novalidate style="gap:20px">
       <div class="card panel logo-pick">
@@ -161,7 +161,7 @@ function editorHTML(d) {
     </form>`;
 }
 
-function bindEditor(root, draft, onSubmit) {
+export function bindEditor(root, draft, onSubmit) {
   const form = $('#cardForm', root);
   const lists = { protocols: [...(draft.protocols || [])], countries: [...(draft.countries || [])], platforms: [...(draft.platforms || [])], payments: [...(draft.payments || [])] };
   let logo = draft.logo || null;
@@ -288,7 +288,7 @@ const niceMax = (v) => {
 
 // One series per chart: bars <= 24px with a 2px gap, 4px rounded tops anchored to the baseline,
 // hairline grid, tap a day for its value.
-function barChart(box, daily, key, unitForms) {
+export function barChart(box, daily, key, unitForms) {
   const W = Math.max(280, Math.round(box.clientWidth)), H = 150, top = 16, bottom = 22;
   const n = daily.length;
   const max = niceMax(Math.max(...daily.map((d) => d[key])));

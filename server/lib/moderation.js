@@ -235,6 +235,19 @@ export function deleteReview(db, user, id) {
   invalidate();
 }
 
+// Panel: change a review's status at any time (e.g. take down an already published one).
+export function setReviewStatus(db, admin, id, status, reason = null) {
+  if (!['approved', 'rejected'].includes(status)) throw badRequest('Неверный статус');
+  return db.tx(() => {
+    const r = db.get('SELECT * FROM reviews WHERE id = ?', id);
+    if (!r) throw notFound('Отзыв не найден');
+    if (status === 'rejected' && !reason) throw badRequest('Укажите причину');
+    db.run('UPDATE reviews SET status = ?, reject_reason = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?', status, status === 'rejected' ? reason : null, admin.id, now(), id);
+    audit(db, admin.id, status === 'approved' ? 'review.approve' : 'review.reject', 'review', id, { service_id: r.service_id, reason, was: r.status });
+    invalidate();
+  });
+}
+
 export function moderateReview(db, admin, id, approve, reason = null) {
   return db.tx(() => {
     const r = pendingOrThrow(db.get('SELECT * FROM reviews WHERE id = ?', id), 'Отзыв');

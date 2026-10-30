@@ -1,7 +1,7 @@
 import { get, put, patch, post, del } from '../api.js';
 import { store, hasRole } from '../store.js';
 import { haptic, confirmDialog, requestWriteAccess, inTelegram, themePref, setThemePref } from '../tg.js';
-import { $, $$, esc, fmt, icon, logoHTML, emptyHTML, stars, dateShort, dateTime, segHTML, bindSeg, toast, toastError, plural } from '../ui.js';
+import { $, $$, esc, fmt, icon, logoHTML, emptyHTML, stars, dateShort, dateTime, segHTML, bindSeg, toast, toastError, plural, avatarHTML } from '../ui.js';
 import { MODERATION_STATUS, NOTIFY_TYPES } from '../dict.js';
 import { topExplainer } from './home.js';
 import { reviewSheet } from './service.js';
@@ -21,12 +21,11 @@ export async function profile(root) {
   const me = store.me;
   if (!me) return needTelegram(root, 'Профиль');
   const name = [me.first_name, me.last_name].filter(Boolean).join(' ');
-  const avatar = me.photo_url ? `<img src="${esc(me.photo_url)}" alt="">` : `<b class="mono">${esc((me.first_name || '?')[0])}</b>`;
   const role = me.active_role === 'vpn_owner' ? 'vpn_owner' : 'client';
 
   root.innerHTML = `
     <div class="center stack-sm" style="align-items:center;padding-top:8px">
-      <span class="lgs avatar lg-size">${avatar}</span>
+      ${avatarHTML(me, 'lg-size')}
       <h1 style="font-size:26px;font-weight:700">${esc(name)}</h1>
       ${me.username ? `<span class="muted">@${esc(me.username)}</span>` : ''}
     </div>
@@ -41,7 +40,7 @@ export async function profile(root) {
         ${row('/profile/history', 'История переходов', fmt(me.counts.history))}
         ${row('/profile/notify', 'Уведомления', me.bot_chat_allowed ? '' : '<span class="tag warn">выключены</span>')}
       </div>
-      ${hasRole('admin') ? `<div class="card group">${row('/admin', '<b>Админка</b>', '<span class="tag">модерация</span>')}</div>` : ''}
+      ${hasRole('admin') ? `<div class="card group"><a class="row press" href="admin/#/admin" style="color:inherit"><span><b>Админ-панель</b></span><span class="row-flex"><span class="tag">отдельная панель</span>${icon.chev}</span></a></div>` : ''}
       <section>
         <p class="label">Оформление</p>
         <div id="themeBox">${segHTML([{ id: 'auto', name: 'Авто' }, { id: 'light', name: 'Светлая' }, { id: 'dark', name: 'Тёмная' }], themePref())}</div>

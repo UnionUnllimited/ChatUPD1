@@ -1,6 +1,6 @@
 import { get } from '../api.js';
 import { store, trackImpressions } from '../store.js';
-import { $, esc, rub, fmt, plural, icon, logoHTML, skeletonHTML, dateShort, openSheet, applyLens, ratingStr, marketTag } from '../ui.js';
+import { $, esc, rub, fmt, plural, icon, logoHTML, skeletonHTML, dateShort, openSheet, applyLens, ratingStr, marketTag, avatarHTML } from '../ui.js';
 import { monthLabel } from '../dict.js';
 
 export function topExplainer(weights = { rating: 0.4, clients: 0.3, stability: 0.3 }) {
@@ -43,11 +43,10 @@ function promoCardHTML(s) {
 
 export default async function home(root, { navigate }) {
   const me = store.me;
-  const avatar = me?.photo_url ? `<img src="${esc(me.photo_url)}" alt="">` : `<b class="mono">${esc((me?.first_name || 'Я')[0])}</b>`;
   root.innerHTML = `
     <div class="topbar">
       <span class="brand"><img src="img/logo.svg" alt="">Линза</span>
-      <button type="button" class="lgs avatar press" data-nav="/profile" aria-label="Профиль">${avatar}</button>
+      <button type="button" class="press" data-nav="/profile" aria-label="Профиль" style="border-radius:50%">${avatarHTML(me || { first_name: 'Я' })}</button>
     </div>
     <section class="hero">
       <h1>Работающий VPN.<br><span>По честной цене.</span></h1>

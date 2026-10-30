@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { now } from './lib/time.js';
+import { sessionUserId } from './lib/sessions.js';
 
 // Validates Telegram WebApp initData as described in
 // https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
@@ -66,7 +67,8 @@ export function grantRole(db, userId, role) {
   db.run('INSERT OR IGNORE INTO user_roles (user_id, role, granted_at) VALUES (?, ?, ?)', userId, role, now());
 }
 
-// Resolves the caller from the Authorization header: "tma <initData>" in production,
+// Resolves the caller from the Authorization header: "tma <initData>" inside Telegram,
+// "Session <token>" in the admin panel opened in a browser (admins only),
 // "dev <telegramId>" only when ALLOW_DEV_AUTH is on.
 export function authenticate(db, config, header) {
   if (!header) return null;
@@ -78,6 +80,12 @@ export function authenticate(db, config, header) {
     if (!data) return null;
     upsertUser(db, data.user);
     return loadUser(db, data.user.id, config.adminIds);
+  }
+  if (scheme === 'Session') {
+    const id = sessionUserId(db, value);
+    const user = id ? loadUser(db, id, config.adminIds) : null;
+    // A session only ever carries admin rights; losing the role ends its use.
+    return user && user.roles.includes('admin') ? user : null;
   }
   if (scheme === 'dev' && config.allowDevAuth) {
     const id = Number(value);

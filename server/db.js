@@ -211,6 +211,25 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 CREATE INDEX IF NOT EXISTS notifications_queue ON notifications(status, id);
 
+-- Admin panel outside Telegram: the bot's /admin command issues a one-time login link
+-- (login_tokens), which is exchanged for a 7-day session. Only hashes are stored.
+CREATE TABLE IF NOT EXISTS login_tokens (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  used_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  last_used_at INTEGER,
+  user_agent TEXT
+);
+
 -- Reserved for monetisation (unused in v1). Paid placements are rendered apart from
 -- the ranking with the "Реклама" label and never affect it.
 CREATE TABLE IF NOT EXISTS ad_placements (

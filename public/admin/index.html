@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<title>Линза · Админ-панель</title>
+<link rel="icon" href="../img/logo.svg" type="image/svg+xml">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="../js/theme.js"></script>
+<link rel="stylesheet" href="../css/app.css">
+<link rel="stylesheet" href="../css/admin.css">
+</head>
+<body class="panel">
+<svg id="lensDefs" width="0" height="0" style="position:absolute" aria-hidden="true"><defs></defs></svg>
+<div class="backdrop" aria-hidden="true"></div>
+
+<div id="page">
+  <div class="panel-shell" id="shell">
+    <aside class="card panel-side" id="side" hidden>
+      <a class="brand" href="#/admin"><img src="../img/logo.svg" alt="">Линза <span class="tag neutral">админ</span></a>
+      <nav class="side-nav" id="sideNav" aria-label="Разделы админ-панели"></nav>
+      <div class="side-foot" id="sideFoot"></div>
+    </aside>
+    <main id="view" class="panel-main" tabindex="-1"></main>
+  </div>
+</div>
+
+<button type="button" class="solid cta press fallback-main" id="fallbackMain" hidden></button>
+
+<div class="overlay" id="overlay"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="handle"></div>
+  <div class="sheet-head">
+    <h2 id="sheetTitle"></h2>
+    <button class="fill circle sm press" id="sheetClose" aria-label="Закрыть">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="sheet-body" id="sheetBody"></div>
+</div>
+
+<div class="lg toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="../js/admin/main.js"></script>
+</body>
+</html>

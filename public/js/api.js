@@ -9,11 +9,25 @@ function devUserId() {
   } catch { return q || '100001'; }
 }
 
-const authHeader = tg ? `tma ${tg.initData}` : `dev ${devUserId()}`;
+// Admin panel in a browser: a session from the bot's one-time /admin link.
+const SESSION_KEY = 'linza_admin_session';
+export function adminSession() {
+  try { return localStorage.getItem(SESSION_KEY); } catch { return null; }
+}
+export function setAdminSession(token) {
+  try { token ? localStorage.setItem(SESSION_KEY, token) : localStorage.removeItem(SESSION_KEY); } catch {}
+}
+
+function authHeader() {
+  if (tg) return `tma ${tg.initData}`;
+  const session = adminSession();
+  return session ? `Session ${session}` : `dev ${devUserId()}`;
+}
 
 // The app may live at the domain root or under a path such as /linza/ (behind a shared proxy),
-// so server paths like "/api/..." and "/uploads/..." are resolved against the page's directory.
-const BASE = new URL('./', document.baseURI);
+// and the admin panel is one level deeper (/linza/admin/). This module sits in <app>/js/,
+// so "/api/..." and "/uploads/..." resolve against its parent directory on every page.
+const BASE = new URL('../', import.meta.url);
 export const appUrl = (path) => new URL(String(path).replace(/^\//, ''), BASE).toString();
 export const asset = (url) => (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') ? appUrl(url) : url);
 
@@ -27,7 +41,7 @@ export async function api(path, { method = 'GET', body, keepalive = false } = {}
     res = await fetch(appUrl(path), {
       method,
       keepalive,
-      headers: { authorization: authHeader, ...(body !== undefined ? { 'content-type': 'application/json' } : {}) },
+      headers: { authorization: authHeader(), ...(body !== undefined ? { 'content-type': 'application/json' } : {}) },
       body: body !== undefined ? JSON.stringify(body) : undefined
     });
   } catch {
@@ -36,6 +50,21 @@ export async function api(path, { method = 'GET', body, keepalive = false } = {}
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError(res.status, data.error || 'Ошибка сервера', data.code);
   return data;
+}
+
+// Authenticated file download (CSV exports).
+export async function download(path, filename) {
+  const res = await fetch(appUrl(path), { headers: { authorization: authHeader() } });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, data.error || 'Не удалось скачать файл', data.code);
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
 export const get = (path) => api(path);

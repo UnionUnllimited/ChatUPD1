@@ -2,8 +2,7 @@ import { get, post, put, asset } from '../api.js';
 import { hasRole } from '../store.js';
 import { haptic, setMain, mainProgress, openLink, confirmDialog } from '../tg.js';
 import {
-  $, $$, esc, rub, fmt, plural, icon, logoHTML, emptyHTML, dateShort, dateTime, stars, segHTML, bindSeg,
-  reasonSheet, toast, toastError, openSheet, monthsWord
+  $, $$, esc, rub, fmt, icon, logoHTML, emptyHTML, dateShort, dateTime, stars, segHTML, bindSeg, reasonSheet, toast, toastError, openSheet, monthsWord
 } from '../ui.js';
 import { PROTOCOL, COUNTRY, PLATFORM, PAYMENT, TARIFF_MONTHS, monthLabel } from '../dict.js';
 
@@ -19,28 +18,6 @@ const userLink = (u) => (u.username ? `https://t.me/${u.username}` : null);
 // Run a moderation action with feedback; resolves true on success.
 async function act(fn, okText) {
   try { await fn(); haptic.notify('success'); toast(okText); return true; } catch (e) { toastError(e); return false; }
-}
-
-/* ---------------- Dashboard ---------------- */
-export async function adminHome(root) {
-  if (!guard(root)) return;
-  const s = await get('/api/admin/summary');
-  const queue = s.revisions + s.promos + s.reviews;
-  const tile = (nav, title, n, hint, hot) => `
-    <button type="button" class="card tile press" data-nav="${nav}">
-      <span class="row-flex between"><span class="n">${n}</span>${hot ? '<span class="dot">!</span>' : ''}</span>
-      <span><span class="t">${title}</span><br><span class="small muted">${hint}</span></span>
-    </button>`;
-  root.innerHTML = page('Админка') + `
-    <div class="tiles">
-      ${tile('/admin/applications', 'Заявки', s.applications, 'на подключение', s.applications > 0)}
-      ${tile('/admin/moderation', 'Модерация', queue, `${s.revisions} карт. · ${s.promos} акц. · ${s.reviews} отз.`, queue > 0)}
-      ${tile('/admin/checks', 'Проверки', s.unchecked, 'без проверки 14+ дней', s.unchecked > 0)}
-      ${tile('/admin/top', 'Топ месяца', s.top_pending ? 'Ждёт' : 'OK', s.top_pending ? 'прошлый месяц не опубликован' : 'опубликован', s.top_pending)}
-      ${tile('/admin/users', 'Пользователи', fmt(s.users), `${s.services} сервисов · ${s.hidden} скрыто`)}
-      ${tile('/admin/log', 'Журнал', '≡', 'действия администраторов')}
-    </div>
-    ${s.outbox ? `<p class="note">В очереди бота ${s.outbox} ${plural(s.outbox, 'сообщение', 'сообщения', 'сообщений')}.</p>` : ''}`;
 }
 
 /* ---------------- Applications ---------------- */
@@ -296,46 +273,6 @@ export async function adminTop(root, { query }) {
     }
   };
   await draw();
-}
-
-/* ---------------- Users & services ---------------- */
-export async function adminUsers(root) {
-  if (!guard(root)) return;
-  root.innerHTML = page('Пользователи и сервисы') + `
-    <form class="lg search" id="uSearch" role="search">${icon.search}<input type="search" name="q" placeholder="ID, @username, имя или название VPN" autocomplete="off" aria-label="Поиск"></form>
-    <div id="uRes" class="stack" style="gap:22px"></div>`;
-  let q = '';
-  const draw = async () => {
-    const { users, services } = await get(`/api/admin/search?q=${encodeURIComponent(q)}`);
-    const box = $('#uRes', root);
-    box.innerHTML = `
-      <section><p class="label">Сервисы</p>${services.length ? `<div class="card group">${services.map((s) => `
-        <div class="row"><span style="display:flex;flex-direction:column;min-width:0"><b>${esc(s.name)}</b>
-          <span class="small muted">${s.status === 'published' ? 'опубликован' : 'черновик'}${s.owner_username ? ` · @${esc(s.owner_username)}` : ''}${s.hidden ? ` · <span style="color:var(--bad)">скрыт: ${esc(s.hidden_reason || '')}</span>` : ''}</span></span>
-          ${s.hidden ? `<button type="button" class="fill btn sm press" data-unhide="${s.id}">Показать</button>` : `<button type="button" class="fill btn sm press danger" data-hide="${s.id}">Скрыть</button>`}
-        </div>`).join('')}</div>` : '<p class="note">Не найдено.</p>'}</section>
-      <section><p class="label">Пользователи</p>${users.length ? `<div class="card group">${users.map((u) => `
-        <div class="row"><span style="display:flex;flex-direction:column;min-width:0"><b>${esc([u.first_name, u.last_name].filter(Boolean).join(' ') || '—')}</b>
-          <span class="small muted">${u.username ? '@' + esc(u.username) + ' · ' : ''}${u.id}${u.roles ? ` · ${esc(u.roles.replace('vpn_owner', 'VPN').replace('admin', 'админ'))}` : ''}${u.is_blocked ? ` · <span style="color:var(--bad)">заблокирован</span>` : ''}</span></span>
-          ${u.is_blocked ? `<button type="button" class="fill btn sm press" data-unblock="${u.id}">Разблок.</button>` : `<button type="button" class="fill btn sm press danger" data-block="${u.id}">Блок</button>`}
-        </div>`).join('')}</div>` : '<p class="note">Не найдено.</p>'}</section>`;
-    const bindReason = (attr, path, title, okText) => $$(`[${attr}]`, box).forEach((b) => b.addEventListener('click', async () => {
-      const reason = await reasonSheet(title);
-      if (reason && (await act(() => post(path(b.getAttribute(attr)), { reason }), okText))) draw();
-    }));
-    const bindPlain = (attr, path, okText) => $$(`[${attr}]`, box).forEach((b) => b.addEventListener('click', async () => {
-      if (await act(() => post(path(b.getAttribute(attr))), okText)) draw();
-    }));
-    bindReason('data-hide', (id) => `/api/admin/services/${id}/hide`, 'Скрыть карточку из каталога', 'Карточка скрыта');
-    bindPlain('data-unhide', (id) => `/api/admin/services/${id}/unhide`, 'Карточка снова в каталоге');
-    bindReason('data-block', (id) => `/api/admin/users/${id}/block`, 'Заблокировать пользователя', 'Пользователь заблокирован');
-    bindPlain('data-unblock', (id) => `/api/admin/users/${id}/unblock`, 'Пользователь разблокирован');
-  };
-  let t;
-  $('#uSearch input', root).addEventListener('input', (e) => { clearTimeout(t); t = setTimeout(() => { q = e.target.value.trim(); draw().catch(toastError); }, 300); });
-  $('#uSearch', root).addEventListener('submit', (e) => e.preventDefault());
-  await draw();
-  return () => clearTimeout(t);
 }
 
 /* ---------------- Audit log ---------------- */

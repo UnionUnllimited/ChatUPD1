@@ -3,11 +3,12 @@ import { join, normalize, extname, resolve } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import { ROOT } from './config.js';
 import { authenticate } from './auth.js';
-import { createRouter, HttpError } from './lib/http.js';
+import { createRouter, HttpError, RawResponse } from './lib/http.js';
 import { publicRoutes } from './routes/public.js';
 import { meRoutes } from './routes/me.js';
 import { ownerRoutes } from './routes/owner.js';
 import { adminRoutes } from './routes/admin.js';
+import { panelRoutes } from './routes/panel.js';
 
 const PUBLIC_DIR = resolve(ROOT, 'public');
 const MAX_BODY = 1024 * 1024;
@@ -25,7 +26,7 @@ const SECURITY_HEADERS = {
     "default-src 'self'",
     "script-src 'self' https://telegram.org",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://t.me https://*.telegram.org https://*.t.me",
+    "img-src 'self' data: blob: https:",
     "connect-src 'self'",
     "frame-ancestors *"
   ].join('; ')
@@ -59,6 +60,15 @@ function serveFile(res, root, relPath, { fallback, cache } = {}) {
   if (!file.startsWith(root)) return send(res, 403, { error: 'forbidden' });
   let st;
   try { st = statSync(file); } catch { st = null; }
+  // A directory serves its index.html (e.g. /admin/ — the admin panel). Without the
+  // trailing slash, redirect relatively so it also works under a path prefix like /linza.
+  if (st?.isDirectory()) {
+    if (!relPath.endsWith('/')) {
+      res.writeHead(301, { location: `${relPath.split('/').filter(Boolean).pop()}/`, ...SECURITY_HEADERS });
+      return res.end();
+    }
+    return serveFile(res, root, join(relPath, 'index.html'), { fallback, cache: false });
+  }
   if (!st || !st.isFile()) {
     if (fallback) return serveFile(res, root, fallback, { cache: false });
     return send(res, 404, { error: 'Не найдено' });
@@ -81,6 +91,7 @@ export function createApp({ db, config, bot, log = console }) {
   meRoutes(router, deps);
   ownerRoutes(router, deps);
   adminRoutes(router, deps);
+  panelRoutes(router, deps);
   router.get('/api/health', () => ({ ok: true }));
 
   async function handleWebhook(req, res) {
@@ -104,9 +115,12 @@ export function createApp({ db, config, bot, log = console }) {
           params: match.params,
           query: Object.fromEntries(url.searchParams),
           body: ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) ? await readBody(req) : null,
-          user: authenticate(db, config, req.headers.authorization)
+          user: authenticate(db, config, req.headers.authorization),
+          authorization: req.headers.authorization || '',
+          userAgent: req.headers['user-agent'] || ''
         };
         const out = await match.handler(ctx);
+        if (out instanceof RawResponse) return send(res, 200, out.body, out.headers);
         return send(res, 200, out ?? { ok: true });
       }
       if (path.startsWith('/uploads/')) return serveFile(res, config.uploadsDir, path.slice('/uploads/'.length), { cache: 'public, max-age=31536000, immutable' });

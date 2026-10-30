@@ -1,5 +1,6 @@
 import { appLink } from '../config.js';
-import { upsertUser } from '../auth.js';
+import { upsertUser, loadUser } from '../auth.js';
+import { createLoginToken } from './sessions.js';
 
 // Thin Telegram Bot API client for the platform bot: notifications, /start, menu button.
 export function createBot(config, log = console) {
@@ -56,7 +57,12 @@ export function createBot(config, log = console) {
           'Нажмите «Старт», чтобы открыть каталог.'
       });
       await soft('setMyShortDescription', { short_description: 'Честный каталог VPN: цены, проверки, отзывы и топ месяца.' });
-      await soft('setMyCommands', { commands: [{ command: 'start', description: 'Открыть Линзу' }, { command: 'help', description: 'Что умеет бот' }] });
+      const commands = [{ command: 'start', description: 'Открыть Линзу' }, { command: 'help', description: 'Что умеет бот' }];
+      await soft('setMyCommands', { commands });
+      // Admins also see /admin in their chat's command menu (works once they have started the bot).
+      for (const id of config.adminIds) {
+        await api('setMyCommands', { commands: [...commands, { command: 'admin', description: 'Вход в админ-панель' }], scope: { type: 'chat', chat_id: id } }).catch(() => {});
+      }
       if (config.webAppUrl) {
         await soft('setChatMenuButton', { menu_button: { type: 'web_app', text: 'Линза', web_app: { url: config.webAppUrl } } });
       }
@@ -85,6 +91,29 @@ export function createBot(config, log = console) {
       }
     },
 
+    // One-time login link to the admin panel (browser) plus a button to open it inside Telegram.
+    async sendAdminLogin(db, userId) {
+      const user = loadUser(db, userId, config.adminIds);
+      if (!user || !user.roles.includes('admin') || user.is_blocked) {
+        await api('sendMessage', { chat_id: userId, text: 'Эта команда доступна только администраторам Линзы.' });
+        return;
+      }
+      if (!config.webAppUrl) {
+        await api('sendMessage', { chat_id: userId, text: 'WEBAPP_URL не задан — ссылку на панель сформировать нельзя.' });
+        return;
+      }
+      const panel = new URL('admin/', config.webAppUrl.endsWith('/') ? config.webAppUrl : config.webAppUrl + '/');
+      const token = createLoginToken(db, userId);
+      await api('sendMessage', {
+        chat_id: userId,
+        text: '🔐 Вход в админ-панель Линзы.\n\nСсылка для браузера действует 10 минут и срабатывает один раз. Никому её не пересылайте.',
+        reply_markup: { inline_keyboard: [
+          [{ text: 'Открыть в браузере', url: `${panel}#login=${token}` }],
+          [{ text: 'Открыть в Telegram', web_app: { url: panel.toString() } }]
+        ] }
+      });
+    },
+
     async handleUpdate(db, update) {
       if (update.my_chat_member) {
         const m = update.my_chat_member;
@@ -105,6 +134,10 @@ export function createBot(config, log = console) {
           'Сравнивайте цены, протоколы и проверки десятков сервисов, сохраняйте избранное и узнавайте о скидках первыми. ' +
           'Рейтинг строится по отзывам, переходам и ручным проверкам — платные места никогда на него не влияют.',
           param && /^[A-Za-z0-9_-]{1,64}$/.test(param) ? param : null, 'Открыть Линзу');
+        return;
+      }
+      if (text.startsWith('/admin')) {
+        await this.sendAdminLogin(db, msg.from.id);
         return;
       }
       if (text.startsWith('/help')) {

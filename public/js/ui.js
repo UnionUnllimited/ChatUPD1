@@ -19,6 +19,21 @@ export const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').mat
 export const replay = (el, cls) => { if (!el || REDUCED) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
 export const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
+// Broken avatars and logos fall back to their monogram (Telegram photo URLs can be unreachable).
+document.addEventListener('error', (e) => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement) || !img.dataset.fallback) return;
+  const b = document.createElement('b');
+  b.className = 'mono';
+  b.textContent = img.dataset.fallback;
+  img.replaceWith(b);
+}, true);
+
+export function avatarHTML(user, cls = '') {
+  const letter = esc((user?.first_name || user?.username || '?').trim()[0] || '?');
+  return `<span class="lgs avatar ${cls}">${user?.photo_url ? `<img src="${esc(user.photo_url)}" alt="" data-fallback="${letter}">` : `<b class="mono">${letter}</b>`}</span>`;
+}
+
 /* ---------------- Icons ---------------- */
 export const icon = {
   heart: (on) => `<svg width="20" height="20" viewBox="0 0 24 24" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg>`,
@@ -234,7 +249,7 @@ export function renderList(container, html) {
 export function logoHTML(s, size = '') {
   const name = s.name || s.service_name || '?';
   const url = s.logo_url;
-  return `<span class="lgs logo ${size}" aria-hidden="true">${url ? `<img src="${esc(asset(url))}" alt="" loading="lazy">` : `<b class="mono">${esc(name.trim()[0] || '?')}</b>`}</span>`;
+  return `<span class="lgs logo ${size}" aria-hidden="true">${url ? `<img src="${esc(asset(url))}" alt="" loading="lazy" data-fallback="${esc(name.trim()[0] || '?')}">` : `<b class="mono">${esc(name.trim()[0] || '?')}</b>`}</span>`;
 }
 
 export const stars = (n) => `<span class="stars" aria-label="${n} из 5">${'★'.repeat(n)}<span class="no">${'★'.repeat(5 - n)}</span></span>`;

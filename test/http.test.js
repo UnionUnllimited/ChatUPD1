@@ -86,3 +86,17 @@ test('static files and SPA fallback', async () => {
   const leak = await (await fetch(base + '/%2e%2e/package.json')).text();
   assert.doesNotMatch(leak, /"scripts"/);
 });
+
+test('admin panel page, redirect and CSV export', async () => {
+  const redirect = await fetch(base + '/admin', { redirect: 'manual' });
+  assert.equal(redirect.status, 301);
+  assert.equal(redirect.headers.get('location'), 'admin/'); // relative, so it survives a /linza prefix
+  assert.match(await (await fetch(base + '/admin/')).text(), /Админ-панель/);
+  const csv = await fetch(base + '/api/admin/export/services.csv', { headers: { authorization: tma(1, 'Admin') } });
+  assert.equal(csv.status, 200);
+  assert.match(csv.headers.get('content-type'), /text\/csv/);
+  const bytes = new Uint8Array(await csv.arrayBuffer());
+  assert.deepEqual([...bytes.slice(0, 3)], [0xef, 0xbb, 0xbf]); // BOM, so Excel reads UTF-8
+  assert.match(new TextDecoder().decode(bytes), /^ID;Название/);
+  assert.equal((await fetch(base + '/api/admin/export/services.csv', { headers: { authorization: tma(5) } })).status, 403);
+});
