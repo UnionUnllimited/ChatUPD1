@@ -1,0 +1,1040 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Линза — поиск VPN</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ================= Tokens ================= */
+@property --g{syntax:'<number>';inherits:false;initial-value:0}
+:root{
+  --bg:#F2F2F7;
+  --text:#1D1D1F;
+  --text-2:#3A3A3C;
+  --text-3:#5F5F64;
+  --link:#0066CC;
+  --ink:#0E1A3A;
+  --sep:rgba(60,60,67,.13);
+  --safe-b:env(safe-area-inset-bottom,0px);
+  --spring:cubic-bezier(.2,.9,.25,1.05);
+  --spring-bouncy:cubic-bezier(.3,1.4,.4,1);
+  --rim:inset 0 1.5px 1px rgba(255,255,255,.95),inset 0 -1.5px 1.5px rgba(255,255,255,.75),inset 0 0 0 1px rgba(255,255,255,.5),inset 0 9px 14px -9px rgba(255,255,255,.8),inset 0 -12px 18px -12px rgba(40,50,80,.12),inset 6px 0 12px -10px rgba(255,255,255,.7),inset -6px 0 12px -10px rgba(255,255,255,.7);
+  --drop:0 0 0 .5px rgba(40,50,80,.10),0 2px 4px rgba(20,28,50,.05),0 14px 26px -12px rgba(20,28,50,.24);
+}
+/* spring curves: damped harmonic oscillator, sampled into linear() */
+@supports (transition-timing-function:linear(0,1)){
+  :root{
+    --spring:linear(0, 0.0272, 0.0949, 0.186, 0.288, 0.392, 0.492, 0.5843, 0.6668, 0.7385, 0.7994, 0.8501, 0.8914, 0.9243, 0.95, 0.9696, 0.9842, 0.9947, 1.0019, 1.0066, 1.0094, 1.0107, 1.0111, 1.0108, 1.01, 1.009, 1.0079, 1.0067, 1.0056, 1.0046, 1.0037, 1.0029, 1.0022, 1.0016, 1.0012, 1.0008, 1.0005, 1.0003, 1.0002, 1.0001, 1);
+    --spring-bouncy:linear(0, 0.0331, 0.1174, 0.2328, 0.3633, 0.4962, 0.6226, 0.7364, 0.8341, 0.9141, 0.9766, 1.0226, 1.054, 1.073, 1.082, 1.0832, 1.0789, 1.0709, 1.0607, 1.0496, 1.0386, 1.0284, 1.0193, 1.0116, 1.0054, 1.0006, 0.9972, 0.9949, 0.9936, 0.9931, 0.9931, 0.9936, 0.9943, 0.9952, 0.9962, 0.9971, 0.9979, 0.9986, 0.9992, 0.9997, 1.0001, 1.0003, 1.0005, 1.0006, 1);
+  }
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:#F2F2F7}
+html,body{margin:0}
+body{background:transparent;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:clip}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0;text-align:inherit}
+a{color:var(--link)}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid rgba(47,91,183,.45);outline-offset:3px}
+[hidden]{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ================= Materials: Liquid Glass (iOS 26) =================
+   One material family, no gloss bands. Glass reads through:
+   a translucent body, lens shading near the edge, a bright specular rim on top,
+   light gathering at the bottom inner edge, and a soft lift shadow. */
+:root{
+  --lens:inset 0 0 0 1px rgba(255,255,255,.85),inset 0 2px 1px -1px #fff,inset 0 0 12px rgba(70,80,110,.28),inset 0 -8px 10px -7px rgba(255,255,255,1);
+  --lift:0 0 0 .5px rgba(0,0,0,.12),0 8px 16px -8px rgba(0,0,0,.3);
+  --glow:radial-gradient(circle at var(--gx,50%) var(--gy,50%),rgba(255,255,255,calc(var(--g)*.6)),rgba(255,255,255,0) 60%);
+}
+.lg,.lgs,.lgb,.card,.fill,.sel{position:relative;isolation:isolate;transition:--g .5s ease}
+/* floating layer: header, tab bar, search capsule, toast */
+.lg{background:var(--glow),radial-gradient(140% 100% at 50% 0%,rgba(255,255,255,.5),rgba(255,255,255,.18) 70%);-webkit-backdrop-filter:blur(12px) saturate(2) brightness(1.05);backdrop-filter:blur(12px) saturate(2) brightness(1.05);box-shadow:var(--lens),0 0 0 .5px rgba(0,0,0,.06),0 2px 6px -2px rgba(0,0,0,.06),0 14px 34px -12px rgba(0,0,0,.2)}
+/* content panels */
+.card{background:var(--glow),radial-gradient(140% 100% at 50% 0%,rgba(255,255,255,.72),rgba(255,255,255,.5) 70%);-webkit-backdrop-filter:blur(22px) saturate(1.8);backdrop-filter:blur(22px) saturate(1.8);box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),inset 0 1.5px 1px rgba(255,255,255,.95),inset 0 -2px 6px rgba(255,255,255,.55),inset 0 0 22px rgba(70,80,110,.06),0 0 0 .5px rgba(0,0,0,.05),0 14px 32px -18px rgba(0,0,0,.2)}
+/* small clear glass controls: heart, chips, secondary buttons */
+.fill{background:var(--glow),transparent;-webkit-backdrop-filter:blur(1.5px) saturate(1.6) contrast(1.05);backdrop-filter:blur(1.5px) saturate(1.6) contrast(1.05);box-shadow:var(--lens),var(--lift)}
+/* selection thumb in segmented controls and tab bar */
+.lgs{background:var(--glow),rgba(255,255,255,.55);-webkit-backdrop-filter:blur(2px) saturate(1.8);backdrop-filter:blur(2px) saturate(1.8);box-shadow:var(--lens),0 0 0 .5px rgba(0,0,0,.1),0 4px 12px -3px rgba(0,0,0,.22)}
+/* tinted glass: primary actions */
+.lgb{color:#08245A;background:var(--glow),rgba(80,140,255,.16);-webkit-backdrop-filter:blur(1.5px) saturate(2);backdrop-filter:blur(1.5px) saturate(2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.8),inset 0 2px 1px -1px #fff,inset 0 0 12px rgba(20,70,200,.34),inset 0 -8px 10px -7px rgba(225,238,255,1),0 0 0 .5px rgba(30,90,200,.45),0 8px 18px -8px rgba(40,110,240,.5)}
+.lgb,.lgb *{color:#08245A}
+/* tinted glass: selected states */
+.sel{color:#0A3F99;background:var(--glow),rgba(80,140,255,.1);-webkit-backdrop-filter:blur(1.5px) saturate(2);backdrop-filter:blur(1.5px) saturate(2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.8),inset 0 2px 1px -1px #fff,inset 0 0 12px rgba(20,70,200,.28),inset 0 -8px 10px -7px rgba(225,238,255,1),0 0 0 .5px rgba(30,90,200,.5),0 8px 18px -8px rgba(40,110,240,.45)}
+.sel *{color:#0A3F99}
+/* specular rim: the light catches the top-left and bottom-right edges */
+.lg::before,.lgs::before,.lgb::before,.card::before,.fill::before,.sel::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.5px;background:linear-gradient(135deg,rgba(255,255,255,1) 0%,rgba(255,255,255,.35) 20%,rgba(255,255,255,0) 42%,rgba(255,255,255,0) 60%,rgba(255,255,255,.4) 82%,rgba(255,255,255,.95) 100%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+/* fields */
+.well{position:relative;background:rgba(118,118,128,.1);box-shadow:inset 0 1px 2px rgba(0,0,0,.05)}
+.search .well{background:rgba(118,118,128,.09);box-shadow:inset 0 1px 2px rgba(0,0,0,.04),inset 0 0 0 .5px rgba(255,255,255,.65)}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;color:#0A3F99;background:radial-gradient(130% 100% at 50% 0%,rgba(255,255,255,.6),rgba(255,255,255,0) 72%),rgba(64,138,255,.16);box-shadow:inset 0 0 0 .5px rgba(90,150,255,.5),inset 0 1px 0 rgba(255,255,255,.8)}
+/* page tint the glass picks up (fixed, so it shifts under the glass while scrolling) */
+.backdrop{position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+  radial-gradient(55% 45% at 0% 0%,rgba(190,212,250,.75),rgba(190,212,250,0) 70%),
+  radial-gradient(50% 50% at 100% 25%,rgba(222,212,250,.7),rgba(222,212,250,0) 70%),
+  radial-gradient(60% 50% at 85% 100%,rgba(250,224,212,.7),rgba(250,224,212,0) 70%),
+  radial-gradient(50% 45% at 10% 95%,rgba(205,236,250,.7),rgba(205,236,250,0) 70%),
+  #F2F2F7}
+
+/* ================= Motion ================= */
+.press{transition:transform .55s var(--spring),--g .5s ease}
+.press.pressed{transform:scale(.955);--g:1;transition:transform .14s ease-out,--g .1s ease}
+@media (hover:hover){.press:hover{--g:.35}}
+@keyframes materialize{from{opacity:0;transform:translateY(10px) scale(.965);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+.mat{animation:materialize .7s var(--spring) both}
+@keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.28)}100%{transform:scale(1)}}
+.pop{animation:pop .55s var(--spring-bouncy)}
+@keyframes bump{0%{transform:scale(1)}40%{transform:scale(.94)}100%{transform:scale(1)}}
+.bump{animation:bump .5s var(--spring-bouncy)}
+
+/* ================= Segmented control with a liquid indicator ================= */
+.seg{position:relative;display:flex;gap:2px;padding:5px;border-radius:999px}
+.seg > button{position:relative;z-index:1;flex:1 1 0;min-height:42px;border-radius:999px;padding:0 16px;font-size:15px;font-weight:500;color:var(--text-2);text-align:center;transition:color .3s ease}
+.seg > button[aria-selected="true"]{color:var(--text);font-weight:600}
+.seg-ind{position:absolute;top:5px;bottom:5px;left:5px;width:0;border-radius:999px;z-index:0;pointer-events:none}
+
+
+/* ================= Layout ================= */
+#page{transform-origin:50% 0;transition:transform .6s var(--spring),filter .6s ease,border-radius .6s var(--spring)}
+#page.behind{transform:scale(.955) translateY(8px);filter:brightness(.97);border-radius:28px;overflow:hidden}
+.wrap{max-width:1120px;margin:0 auto;padding:14px 24px 120px;display:flex;flex-direction:column;gap:52px}
+
+.scroll-edge{position:fixed;left:0;right:0;top:0;height:92px;z-index:25;pointer-events:none;opacity:0;transition:opacity .3s ease;background:linear-gradient(180deg,rgba(242,242,247,.8),rgba(242,242,247,0));-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);-webkit-mask:linear-gradient(180deg,#000 35%,transparent);mask:linear-gradient(180deg,#000 35%,transparent)}
+.scrolled .scroll-edge{opacity:1}
+
+header.lg{position:sticky;top:12px;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:14px;border-radius:999px;padding:7px 7px 7px 10px;transition:padding .5s var(--spring)}
+.scrolled header.lg{padding:4px 4px 4px 8px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-weight:600;font-size:20px;letter-spacing:-.02em}
+.brand .mark{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.topnav{flex:0 1 380px}
+.topnav > button{font-size:14px;min-height:38px}
+.head-actions{display:flex;gap:8px;align-items:center}
+.circle{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.btn{min-height:46px;padding:0 22px;border-radius:999px;font-size:15px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+
+.hero{position:relative;display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center;border-radius:44px;padding:76px 32px 40px;overflow:hidden;background:
+  radial-gradient(60% 80% at 14% 18%,#CFE0FB 0%,rgba(207,224,251,0) 62%),
+  radial-gradient(55% 75% at 88% 12%,#E3DCF8 0%,rgba(227,220,248,0) 60%),
+  radial-gradient(70% 70% at 72% 105%,#F8E3DA 0%,rgba(248,227,218,0) 60%),
+  radial-gradient(60% 60% at 18% 105%,#D9EEF8 0%,rgba(217,238,248,0) 60%),
+  #F4F5F9}
+.hero h1{margin:0;font-size:clamp(40px,6vw,80px);line-height:1.04;font-weight:700;letter-spacing:-.035em;max-width:880px}
+.hero h1 span{color:#6E6E73}
+.hero .lead{margin:0;font-size:21px;line-height:1.45;color:var(--text-2);max-width:600px;letter-spacing:-.01em}
+.hero .note{margin:0;font-size:13px;color:var(--text-2)}
+.search{width:100%;border-radius:999px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;text-align:left;margin-top:26px}
+.field{flex:1 1 150px;min-height:64px;border-radius:999px;padding:8px 24px;display:flex;flex-direction:column;justify-content:center;gap:1px;text-align:left}
+.field.wide{flex-basis:200px}
+.field .k{font-size:12px;color:#48484A}
+.field .v{font-size:17px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.go{flex:0 1 160px;min-height:64px;border-radius:999px;padding:0 28px;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
+
+.sec-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;padding:0 8px;margin-bottom:18px}
+h2{margin:0;font-size:28px;font-weight:700;letter-spacing:-.025em}
+.sec-head .hint{font-size:15px;color:var(--text-3)}
+.periods{display:flex;flex-wrap:wrap;gap:14px}
+.period{flex:1 1 150px;min-height:96px;border-radius:28px;padding:16px 22px;display:flex;flex-direction:column;justify-content:center;gap:4px;text-align:left}
+.period .k{font-size:14px;color:var(--text-2)}
+.period .v{font-size:26px;font-weight:700;letter-spacing:-.03em}
+.period.sel .k{color:#0058B0}
+
+.cols{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+aside{flex:1 1 280px;max-width:100%;display:flex;flex-direction:column;gap:22px}
+main{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:18px}
+.label{font-size:13px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.03em;padding:0 8px;margin:0 0 10px}
+.link-btn{padding:8px 0;font-size:15px;color:var(--link)}
+.panel{border-radius:28px;padding:18px 20px}
+.group{border-radius:28px;padding:4px 20px;display:flex;flex-direction:column}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:16px;min-height:54px;width:100%;text-align:left}
+.group .row + .row{border-top:1px solid var(--sep)}
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{min-height:44px;padding:0 18px;border-radius:999px;font-size:15px;font-weight:500}
+.count-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 8px}
+.count{font-size:14px;color:var(--text-3)}
+.dot{min-width:20px;height:20px;border-radius:999px;background:#0066CC;color:#fff;font-size:12px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
+
+/* Result card (as "Recommendations") */
+.res{border-radius:32px;padding:22px;display:flex;flex-wrap:wrap;gap:20px;align-items:center}
+.res-info{flex:999 1 320px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.res-head{display:flex;align-items:center;gap:14px;text-align:left}
+.logo{width:56px;height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;flex-shrink:0}
+.res-title{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.res-title .name{font-size:21px;font-weight:700;letter-spacing:-.02em}
+.meta{font-size:14px;color:var(--text-3);margin-top:3px}
+.facts{display:flex;flex-wrap:wrap;row-gap:4px;font-size:14px;color:var(--text-2)}
+.facts span{padding-right:14px;margin-right:14px;border-right:1px solid rgba(60,60,67,.18)}
+.facts span:last-child{border-right:0}
+.res-price{flex:1 1 200px;display:flex;flex-direction:column;align-items:flex-end;gap:12px;text-align:right}
+.res-price b{display:block;font-size:32px;font-weight:700;letter-spacing:-.035em;line-height:1}
+.res-price b small{font-size:15px;font-weight:500;color:var(--text-3);letter-spacing:0}
+.res-price .total{font-size:13px;color:var(--text-3);margin-top:2px}
+.res-actions{display:flex;gap:8px;align-items:center}
+.fav{color:var(--text-2)}
+.fav[aria-pressed="true"]{color:#D0284A}
+.empty{border-radius:32px;padding:32px 22px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
+.empty p{margin:0;color:var(--text-2);font-size:16px;line-height:1.45;max-width:420px}
+.view-title{margin:0;font-size:clamp(34px,4vw,48px);font-weight:700;letter-spacing:-.035em;padding:0 8px}
+
+/* Compare */
+.cmp-wrap{overflow-x:auto;border-radius:32px}
+.cmp{border-collapse:separate;border-spacing:0;min-width:100%;font-size:15px}
+.cmp th,.cmp td{padding:14px 18px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--sep)}
+.cmp tr:last-child>*{border-bottom:0}
+.cmp thead th{font-size:16px;font-weight:700}
+.cmp tbody th{font-weight:500;color:var(--text-3);font-size:14px}
+.best{color:#1E7A3C;font-weight:700}
+
+/* Tab bar (phones) */
+.tabbar{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + var(--safe-b));width:min(calc(100% - 32px),440px);border-radius:999px;padding:5px;z-index:35}
+.tabbar > button{min-height:56px;flex-direction:column;gap:2px;font-size:10px;display:flex;align-items:center;justify-content:center}
+.tabbar > button[aria-selected="true"]{color:#0066CC}
+
+/* Sheet */
+.overlay{position:fixed;inset:0;background:rgba(20,25,35,.18);opacity:0;visibility:hidden;transition:opacity .35s ease,visibility .35s;z-index:40}
+.overlay.open{opacity:1;visibility:visible}
+.sheet{position:fixed;left:50%;bottom:0;width:min(100%,520px);max-height:90vh;transform:translate(-50%,110%);visibility:hidden;transition:transform .32s cubic-bezier(.4,0,1,1),visibility .32s;z-index:50;border-radius:34px 34px 0 0;padding:8px 16px calc(20px + var(--safe-b));display:flex;flex-direction:column;background:rgba(242,242,247,.9);-webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8);box-shadow:0 0 0 .5px rgba(0,0,0,.06),0 -10px 40px -12px rgba(0,0,0,.22)}
+.sheet.open{transform:translate(-50%,0);visibility:visible;transition:transform .65s var(--spring),visibility 0s}
+.handle{width:40px;height:5px;border-radius:999px;background:rgba(60,60,67,.25);margin:4px auto 10px}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 4px 14px}
+.sheet-head h2{font-size:22px}
+.sheet-body{overflow-y:auto;margin:0 -16px;padding:2px 16px 4px;display:flex;flex-direction:column;gap:18px}
+.check{color:#0066CC;opacity:0;transform:scale(.5);transition:opacity .2s ease,transform .45s var(--spring-bouncy)}
+[aria-checked="true"] .check{opacity:1;transform:scale(1)}
+
+/* Switch: glass track, glass capsule thumb that stretches on press */
+.sw{appearance:none;-webkit-appearance:none;width:58px;height:32px;border-radius:999px;margin:0;position:relative;cursor:pointer;flex-shrink:0;background:rgba(120,120,128,.16);box-shadow:inset 0 1px 3px rgba(0,0,0,.08),inset 0 0 0 .5px rgba(255,255,255,.5);transition:background .35s ease}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:30px;height:26px;border-radius:999px;background:rgba(255,255,255,.7);box-shadow:inset 0 0 0 1px rgba(255,255,255,.9),inset 0 2px 1px -1px #fff,inset 0 0 8px rgba(70,80,110,.22),inset 0 -5px 7px -5px #fff,0 0 0 .5px rgba(0,0,0,.1),0 3px 8px rgba(0,0,0,.22);transition:left .55s var(--spring-bouncy),width .3s var(--spring)}
+.sw:active::after{width:36px}
+.sw:checked{background:radial-gradient(130% 100% at 50% 0%,rgba(255,255,255,.35),rgba(255,255,255,0) 70%),rgba(52,199,89,.92);box-shadow:inset 0 1px 1px rgba(255,255,255,.5),inset 0 0 10px rgba(0,90,30,.18)}
+.sw:checked::after{left:25px}
+.sw:checked:active::after{left:19px}
+
+/* Range with a glass thumb */
+.range{width:100%;-webkit-appearance:none;appearance:none;height:30px;background:transparent;margin:6px 0 0}
+.range::-webkit-slider-runnable-track{height:6px;border-radius:999px;background:linear-gradient(90deg,#0066CC var(--p,50%),rgba(120,120,128,.2) var(--p,50%))}
+.range::-webkit-slider-thumb{-webkit-appearance:none;width:34px;height:26px;border-radius:999px;margin-top:-10px;background:radial-gradient(130% 100% at 50% 0%,#fff,rgba(255,255,255,.82) 75%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.7),inset 0 0 8px rgba(70,80,110,.12),0 0 0 .5px rgba(0,0,0,.05),0 3px 8px rgba(0,0,0,.2);transition:transform .4s var(--spring-bouncy)}
+.range:active::-webkit-slider-thumb{transform:scale(1.12)}
+.range::-moz-range-track{height:6px;border-radius:999px;background:rgba(120,120,128,.2)}
+.range::-moz-range-progress{height:6px;border-radius:999px;background:#0066CC}
+.range::-moz-range-thumb{width:34px;height:26px;border:0;border-radius:999px;background:#fff;box-shadow:0 0 0 .5px rgba(40,50,80,.14),0 3px 8px rgba(20,28,50,.24)}
+
+/* Detail sheet */
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stat{border-radius:22px;padding:12px 14px}
+.stat .k{display:block;font-size:12px;color:var(--text-3)}
+.stat .v{display:block;font-size:17px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+.plan{min-height:62px}
+.plan .sub{display:block;font-size:13px;color:var(--text-3)}
+.save{font-size:12px;font-weight:600;color:#1E7A3C;margin-left:6px}
+.radio{width:24px;height:24px;border-radius:50%;flex-shrink:0;box-shadow:inset 0 0 0 1.5px rgba(60,60,67,.3);transition:box-shadow .4s var(--spring)}
+.plan[aria-checked="true"] .radio{box-shadow:inset 0 0 0 7px #0066CC}
+.ok{color:#1E7A3C;font-weight:600}
+.no{color:var(--text-3)}
+.cta{min-height:56px;border-radius:999px;font-size:17px;font-weight:600;width:100%;display:flex;align-items:center;justify-content:center;gap:8px}
+
+/* Toast */
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translate(-50%,-200%) scale(.9);visibility:hidden;transition:transform .35s ease-in,visibility .35s;z-index:60;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:600;white-space:nowrap}
+.toast.show{transform:translate(-50%,0) scale(1);visibility:visible;transition:transform .6s var(--spring-bouncy),visibility 0s}
+
+/* ================= Phone ================= */
+@media (max-width:760px){
+  .wrap{padding:8px 16px calc(120px + var(--safe-b));gap:34px}
+  header.lg{top:8px}
+  .topnav,.btn-login{display:none!important}
+  .tabbar{display:flex}
+  .hero{padding:40px 14px 18px;gap:14px;border-radius:34px;margin:0 -4px}
+  .hero h1{font-size:40px}
+  .hero .lead{font-size:17px}
+  .search{border-radius:32px;margin-top:14px}
+  .field{flex:1 1 calc(50% - 3px);min-height:58px;padding:6px 20px}
+  .field.wide{flex-basis:100%}
+  .go{flex:1 1 100%;min-height:56px}
+  h2{font-size:24px}
+  .periods{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:4px 16px 22px;scrollbar-width:none}
+  .periods::-webkit-scrollbar{display:none}
+  .period{flex:0 0 132px;min-height:84px}
+  .period .v{font-size:22px}
+  aside.desktop{display:none}
+  .res{padding:18px;border-radius:30px}
+  .res-price{flex-basis:100%;flex-direction:row;justify-content:space-between;align-items:center;text-align:left}
+  .res-price b{font-size:28px}
+}
+@media (min-width:761px){.mobile-only{display:none!important}.search .well{background:transparent;box-shadow:none}.search .well + .well{background-image:linear-gradient(rgba(60,60,67,.16),rgba(60,60,67,.16));background-size:1px 46%;background-position:left center;background-repeat:no-repeat}.search .well:hover{background-color:rgba(255,255,255,.55)}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media (prefers-reduced-transparency:reduce){.lg,.lgs,.lgb,.sheet{-webkit-backdrop-filter:none;backdrop-filter:none}.lg{background:#F4F5F7}}
+</style>
+</head>
+<body>
+
+<!-- Holds generated lens (refraction) filters for Chromium -->
+<svg id="lensDefs" width="0" height="0" style="position:absolute" aria-hidden="true"><defs></defs></svg>
+<div class="backdrop" aria-hidden="true"></div>
+<div class="scroll-edge" aria-hidden="true"></div>
+
+<div id="page">
+<div class="wrap">
+  <header class="lg" data-lens="16">
+    <a href="#" class="brand press" data-goto="search">
+      <span class="lgb mark"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg></span>
+      Линза
+    </a>
+    <nav class="seg topnav fill" role="tablist" aria-label="Разделы" data-seg="nav">
+      <span class="seg-ind lgs"></span>
+      <button role="tab" data-tab="search">Поиск</button>
+      <button role="tab" data-tab="fav">Избранное</button>
+      <button role="tab" data-tab="cmp">Сравнение</button>
+    </nav>
+    <div class="head-actions">
+      <button class="fill circle press" data-tab="fav" aria-label="Избранное">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg>
+      </button>
+      <button class="fill btn press btn-login" id="btnLogin">Войти</button>
+    </div>
+  </header>
+
+  <!-- ================= Search view ================= -->
+  <div data-view="search" style="display:flex;flex-direction:column;gap:inherit">
+    <section class="hero">
+      <h1>Лучший VPN.<br><span>По лучшей цене.</span></h1>
+      <p class="lead">Сравните тарифы, скорость и протоколы десятков сервисов в одном поиске.</p>
+      <form class="lg search" id="searchForm" data-lens="20">
+        <button type="button" class="well field wide press" data-sheet="country"><span class="k">Страна сервера</span><span class="v" id="vCountry"></span></button>
+        <button type="button" class="well field press" data-sheet="period"><span class="k">Срок</span><span class="v" id="vPeriod"></span></button>
+        <button type="button" class="well field press" data-sheet="devices"><span class="k">Устройства</span><span class="v" id="vDevices"></span></button>
+        <button type="button" class="well field wide press" data-sheet="protocol"><span class="k">Протокол</span><span class="v" id="vProtocol"></span></button>
+        <button type="submit" class="lgb go press">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          Найти
+        </button>
+      </form>
+      <p class="note">Цены обновляются каждый час · Только проверенные сервисы</p>
+    </section>
+
+    <section aria-labelledby="perTitle">
+      <div class="sec-head">
+        <h2 id="perTitle">Цена за месяц по срокам</h2>
+        <span class="hint">Чем дольше подписка, тем выгоднее</span>
+      </div>
+      <div class="periods" id="periods" role="radiogroup" aria-labelledby="perTitle"></div>
+    </section>
+
+    <div class="cols" id="resultsTop">
+      <aside class="desktop" aria-label="Фильтры">
+        <div class="sec-head" style="margin-bottom:0">
+          <h2>Фильтры</h2>
+          <button type="button" class="fill btn press" data-action="reset-filters" style="min-height:36px;padding:0 14px;font-size:14px;color:#0A3F99">Сбросить</button>
+        </div>
+        <div id="filtersDesktop" style="display:flex;flex-direction:column;gap:22px"></div>
+      </aside>
+
+      <main>
+        <div class="lg seg" role="tablist" aria-label="Сортировка" id="sortSeg" data-seg="sort">
+          <span class="seg-ind lgs"></span>
+          <button role="tab" data-sort="cheap">Дешёвые</button>
+          <button role="tab" data-sort="fast">Быстрые</button>
+          <button role="tab" data-sort="best">Оптимальные</button>
+        </div>
+        <div class="count-row">
+          <span class="count" id="count"></span>
+          <button type="button" class="fill btn press mobile-only" id="btnFilters" style="min-height:40px;padding:0 16px;font-size:14px">Фильтры <span class="dot" id="filterDot" hidden></span></button>
+        </div>
+        <div id="results" style="display:flex;flex-direction:column;gap:18px"></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ================= Favorites view ================= -->
+  <div data-view="fav" hidden style="display:flex;flex-direction:column;gap:22px">
+    <h1 class="view-title">Избранное</h1>
+    <div id="favList" style="display:flex;flex-direction:column;gap:18px"></div>
+  </div>
+
+  <!-- ================= Compare view ================= -->
+  <div data-view="cmp" hidden style="display:flex;flex-direction:column;gap:22px">
+    <h1 class="view-title">Сравнение</h1>
+    <div id="cmpBox"></div>
+  </div>
+</div>
+</div>
+
+<nav class="lg seg tabbar" role="tablist" aria-label="Разделы" data-seg="tabbar" data-lens="18">
+  <span class="seg-ind lgs"></span>
+  <button role="tab" data-tab="search">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Поиск</button>
+  <button role="tab" data-tab="fav">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg>Избранное</button>
+  <button role="tab" data-tab="cmp">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Сравнение</button>
+</nav>
+
+<div class="overlay" id="overlay"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="handle"></div>
+  <div class="sheet-head">
+    <h2 id="sheetTitle"></h2>
+    <button class="fill circle press" id="sheetClose" aria-label="Закрыть" style="width:36px;height:36px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="sheet-body" id="sheetBody"></div>
+</div>
+
+<div class="lg toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* =========================================================
+   Telegram WebApp bridge (safe outside Telegram)
+   ========================================================= */
+const tg = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData !== undefined ? window.Telegram.WebApp : null;
+if (tg) {
+  try { tg.ready(); tg.expand(); tg.setHeaderColor('#F2F2F7'); tg.setBackgroundColor('#F2F2F7'); } catch (e) {}
+}
+const haptic = (type = 'light') => { try { tg.HapticFeedback.impactOccurred(type); } catch (e) {} };
+const hapticSelect = () => { try { tg.HapticFeedback.selectionChanged(); } catch (e) {} };
+const openExternal = (url) => {
+  try { if (tg && tg.platform !== 'unknown') { tg.openLink(url); return; } } catch (e) {}
+  window.open(url, '_blank', 'noopener');
+};
+const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const SPRING = cssVar('--spring');
+const SPRING_BOUNCY = cssVar('--spring-bouncy');
+
+/* =========================================================
+   Mock data — replace with an API call later
+   ========================================================= */
+const COUNTRIES = [
+  { id: 'any', name: 'Любая страна' }, { id: 'nl', name: 'Нидерланды' }, { id: 'de', name: 'Германия' },
+  { id: 'fi', name: 'Финляндия' }, { id: 'us', name: 'США' }, { id: 'tr', name: 'Турция' },
+  { id: 'kz', name: 'Казахстан' }, { id: 'jp', name: 'Япония' }
+];
+const PERIODS = [
+  { id: 1, name: '1 месяц' }, { id: 3, name: '3 месяца' }, { id: 6, name: '6 месяцев' },
+  { id: 12, name: '12 месяцев' }, { id: 24, name: '24 месяца' }
+];
+const DEVICES = [{ id: 1, name: '1 устройство' }, { id: 3, name: 'До 3' }, { id: 5, name: 'До 5' }, { id: 10, name: 'До 10' }];
+const PROTOCOLS = ['VLESS Reality', 'WireGuard', 'Shadowsocks', 'OpenVPN', 'Hysteria 2'];
+const PLATFORMS = ['iPhone и iPad', 'Android', 'Mac и Windows', 'Роутер и Smart TV'];
+const FLAGS = [['trial', 'Пробный период'], ['works', 'Работает при ограничениях'], ['sbp', 'Оплата через СБП'], ['nologs', 'Без хранения логов']];
+
+const SERVICES = [
+  { id: 'aurora', name: 'Аврора VPN', rating: 4.8, reviews: 1240, speed: 410, ping: 38, devices: 5, trial: true, sbp: true, nologs: false, works: true,
+    protocols: ['VLESS Reality'], countries: ['nl', 'de', 'fi', 'us', 'tr', 'kz'], countriesCount: 42, platforms: [0, 1, 2],
+    prices: { 1: 249, 3: 219, 6: 189, 12: 149, 24: 129 }, url: 'https://example.com/aurora' },
+  { id: 'wind', name: 'Северный ветер', rating: 4.7, reviews: 860, speed: 850, ping: 24, devices: 10, trial: false, sbp: true, nologs: true, works: true,
+    protocols: ['WireGuard'], countries: ['nl', 'de', 'fi', 'us'], countriesCount: 31, platforms: [0, 1, 2, 3],
+    prices: { 1: 299, 3: 259, 6: 219, 12: 179, 24: 159 }, url: 'https://example.com/wind' },
+  { id: 'pulse', name: 'Пульс', rating: 4.9, reviews: 2015, speed: 620, ping: 31, devices: 5, trial: true, sbp: false, nologs: true, works: true,
+    protocols: ['VLESS Reality', 'Shadowsocks'], countries: ['nl', 'de', 'fi', 'us', 'tr', 'kz', 'jp'], countriesCount: 58, platforms: [0, 1, 2],
+    prices: { 1: 329, 3: 279, 6: 239, 12: 199, 24: 179 }, url: 'https://example.com/pulse' },
+  { id: 'quartz', name: 'Кварц', rating: 4.5, reviews: 430, speed: 300, ping: 45, devices: 5, trial: false, sbp: true, nologs: false, works: true,
+    protocols: ['OpenVPN', 'WireGuard'], countries: ['nl', 'de', 'us'], countriesCount: 25, platforms: [0, 1, 2, 3],
+    prices: { 1: 279, 3: 259, 6: 249, 12: 229, 24: 199 }, url: 'https://example.com/quartz' },
+  { id: 'horizon', name: 'Горизонт', rating: 4.6, reviews: 712, speed: 540, ping: 29, devices: 10, trial: true, sbp: true, nologs: true, works: true,
+    protocols: ['Hysteria 2', 'VLESS Reality'], countries: ['fi', 'kz', 'jp'], countriesCount: 19, platforms: [0, 1, 3],
+    prices: { 1: 269, 3: 239, 6: 209, 12: 169, 24: 149 }, url: 'https://example.com/horizon' },
+  { id: 'meridian', name: 'Меридиан', rating: 4.4, reviews: 318, speed: 260, ping: 52, devices: 5, trial: true, sbp: false, nologs: false, works: false,
+    protocols: ['Shadowsocks', 'OpenVPN'], countries: ['de', 'tr', 'us'], countriesCount: 34, platforms: [0, 1, 2],
+    prices: { 1: 199, 3: 189, 6: 179, 12: 159, 24: 139 }, url: 'https://example.com/meridian' }
+];
+
+/* =========================================================
+   State
+   ========================================================= */
+const DEFAULT_FILTERS = () => ({ maxPrice: 400, protocols: ['VLESS Reality', 'WireGuard'], trial: false, works: true, sbp: false, nologs: false, platforms: [0, 1] });
+const state = {
+  tab: 'search', country: 'nl', period: 12, devices: 5, protocol: 'any', sort: 'cheap',
+  filters: DEFAULT_FILTERS(), favorites: loadFavorites()
+};
+function loadFavorites() { try { return JSON.parse(localStorage.getItem('lens_favorites') || '[]'); } catch (e) { return []; } }
+function saveFavorites() { try { localStorage.setItem('lens_favorites', JSON.stringify(state.favorites)); } catch (e) {} }
+
+/* =========================================================
+   Helpers
+   ========================================================= */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const fmt = (n) => n.toLocaleString('ru-RU').replace(/ /g, ' ');
+const rub = (n) => fmt(n) + ' ₽';
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; if (m10 === 1 && m100 !== 11) return a; if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return b; return c; };
+const nameOf = (list, id) => (list.find((x) => x.id === id) || {}).name;
+const rating = (r) => String(r).replace('.', ',');
+const replay = (el, cls) => { if (!el || REDUCED) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
+
+/* =========================================================
+   Lensing: real refraction via an SVG displacement map (Chromium only).
+   Safari / iOS WebView cannot use url() in backdrop-filter, so there the blur glass stays.
+   ========================================================= */
+const LENS_OK = (() => {
+  const ua = navigator.userAgent;
+  return /Chrome|Chromium|Edg\//.test(ua) && !/iPhone|iPad|iPod/.test(ua) && CSS.supports('backdrop-filter', 'url(#x)');
+})();
+let lensSeq = 0;
+function lensMap(w, h, radius, bezel) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(w, h);
+  const r = Math.min(radius, h / 2, w / 2);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const px = x + 0.5 - w / 2, py = y + 0.5 - h / 2;
+      const qx = Math.abs(px) - (w / 2 - r), qy = Math.abs(py) - (h / 2 - r);
+      let dist, nx, ny;
+      if (qx > 0 && qy > 0) {
+        const len = Math.hypot(qx, qy);
+        dist = len - r; nx = (qx / len) * Math.sign(px); ny = (qy / len) * Math.sign(py);
+      } else {
+        dist = Math.max(qx, qy) - r;
+        if (qx > qy) { nx = Math.sign(px); ny = 0; } else { nx = 0; ny = Math.sign(py); }
+      }
+      const depth = -dist;
+      let dx = 0, dy = 0;
+      if (depth >= 0 && depth < bezel) {
+        const t = 1 - depth / bezel;
+        const m = t * t * (3 - 2 * t); // smoothstep: strongest bend right at the rim
+        dx = -nx * m; dy = -ny * m;
+      }
+      const i = (y * w + x) * 4;
+      img.data[i] = 128 + dx * 127;
+      img.data[i + 1] = 128 + dy * 127;
+      img.data[i + 2] = 128;
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return c.toDataURL();
+}
+function applyLens(el) {
+  if (!LENS_OK) return;
+  const bezel = Number(el.dataset.lens) || 16;
+  const build = () => {
+    const w = Math.round(el.offsetWidth), h = Math.round(el.offsetHeight);
+    if (!w || !h) return;
+    const radius = parseFloat(getComputedStyle(el).borderTopLeftRadius) || h / 2;
+    const id = el.dataset.lensId || ('lens' + (++lensSeq));
+    el.dataset.lensId = id;
+    let f = document.getElementById(id);
+    if (!f) {
+      f = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+      f.setAttribute('id', id);
+      f.setAttribute('color-interpolation-filters', 'sRGB');
+      $('#lensDefs defs').appendChild(f);
+    }
+    f.innerHTML = `<feImage href="${lensMap(w, h, radius, bezel)}" x="0" y="0" width="${w}" height="${h}" result="map"/>
+      <feDisplacementMap in="SourceGraphic" in2="map" scale="${bezel * 2.2}" xChannelSelector="R" yChannelSelector="G"/>`;
+    el.style.backdropFilter = `blur(3px) url(#${id}) saturate(1.8) brightness(1.05)`;
+  };
+  let t;
+  new ResizeObserver(() => { clearTimeout(t); t = setTimeout(build, 80); }).observe(el);
+}
+
+/* =========================================================
+   Liquid segmented indicator: slides on a spring and squashes like a drop
+   ========================================================= */
+function moveIndicator(seg, animate = true) {
+  const ind = $('.seg-ind', seg);
+  const active = $('[aria-selected="true"]', seg);
+  if (!ind || !active || !seg.offsetWidth) return;
+  const x = active.offsetLeft, w = active.offsetWidth;
+  const prevX = parseFloat(ind.dataset.x), prevW = parseFloat(ind.dataset.w);
+  ind.style.left = x + 'px';
+  ind.style.width = w + 'px';
+  ind.dataset.x = x; ind.dataset.w = w;
+  if (!animate || REDUCED || isNaN(prevX) || prevX === x) return;
+  ind.animate([{ left: prevX + 'px', width: prevW + 'px' }, { left: x + 'px', width: w + 'px' }], { duration: 650, easing: SPRING_BOUNCY });
+  ind.animate([
+    { transform: 'scale(1,1)' },
+    { transform: 'scale(1.08,.86)', offset: 0.35 },
+    { transform: 'scale(.98,1.04)', offset: 0.7 },
+    { transform: 'scale(1,1)' }
+  ], { duration: 520, easing: 'ease-in-out' });
+}
+
+/* =========================================================
+   Filtering & sorting
+   ========================================================= */
+function matchesBase(s, f = state.filters) {
+  if (state.country !== 'any' && !s.countries.includes(state.country)) return false;
+  if (s.devices < state.devices) return false;
+  if (state.protocol !== 'any' && !s.protocols.includes(state.protocol)) return false;
+  if (f.protocols.length && !f.protocols.some((p) => s.protocols.includes(p))) return false;
+  for (const [k] of FLAGS) if (f[k] && !s[k]) return false;
+  if (f.platforms.length && !f.platforms.every((p) => s.platforms.includes(p))) return false;
+  return true;
+}
+function getResults(f = state.filters) {
+  const list = SERVICES.filter((s) => matchesBase(s, f) && s.prices[state.period] <= f.maxPrice);
+  const score = (s) => s.rating * 20 + s.speed / 40 - s.prices[state.period] / 10;
+  const sorters = {
+    cheap: (a, b) => a.prices[state.period] - b.prices[state.period],
+    fast: (a, b) => b.speed - a.speed,
+    best: (a, b) => score(b) - score(a)
+  };
+  return list.sort(sorters[state.sort]);
+}
+function getBadges(list) {
+  if (!list.length) return {};
+  const b = {};
+  const by = (fn) => [...list].sort(fn)[0].id;
+  b[by((a, c) => a.prices[state.period] - c.prices[state.period])] = 'Дешевле всех';
+  const fast = by((a, c) => c.speed - a.speed); if (!b[fast]) b[fast] = 'Быстрее всех';
+  const top = by((a, c) => c.rating - a.rating); if (!b[top]) b[top] = 'Выбор редакции';
+  return b;
+}
+function activeFilterCount() {
+  const f = state.filters, d = DEFAULT_FILTERS();
+  let n = 0;
+  if (f.maxPrice !== d.maxPrice) n++;
+  if (f.protocols.join() !== d.protocols.join()) n++;
+  if ([...f.platforms].sort().join() !== d.platforms.join()) n++;
+  FLAGS.forEach(([k]) => { if (f[k] !== d[k]) n++; });
+  return n;
+}
+
+/* =========================================================
+   Rendering
+   ========================================================= */
+const heart = (on) => `<svg width="19" height="19" viewBox="0 0 24 24" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg>`;
+const CHECK = '<svg class="check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"/></svg>';
+
+function cardHTML(s, badge) {
+  const fav = state.favorites.includes(s.id);
+  const m = s.prices[state.period];
+  const facts = [s.protocols.join(' · '), `${s.countriesCount} ${plural(s.countriesCount, 'страна', 'страны', 'стран')}`, `${s.speed} Мбит/с`];
+  if (s.trial) facts.push('Пробный период');
+  return `
+  <article class="lg card res" data-key="${s.id}">
+    <div class="res-info">
+      <button class="res-head" data-open="${s.id}">
+        <span class="lgs logo" aria-hidden="true">${esc(s.name[0])}</span>
+        <span style="min-width:0">
+          <span class="res-title"><span class="name">${esc(s.name)}</span>${badge ? `<span class="tag">${badge}</span>` : ''}</span>
+          <span class="meta" style="display:block">★ ${rating(s.rating)} · ${fmt(s.reviews)} ${plural(s.reviews, 'отзыв', 'отзыва', 'отзывов')}</span>
+        </span>
+      </button>
+      <div class="facts">${facts.map((f) => `<span>${esc(f)}</span>`).join('')}</div>
+    </div>
+    <div class="res-price">
+      <div>
+        <b>${rub(m)}<small> /мес</small></b>
+        <div class="total">${rub(m * state.period)} за ${nameOf(PERIODS, state.period).replace(/^1 /, '')}</div>
+      </div>
+      <div class="res-actions">
+        <button class="fill circle fav press" data-fav="${s.id}" aria-pressed="${fav}" aria-label="${fav ? 'Убрать из избранного' : 'Добавить в избранное'}">${heart(fav)}</button>
+        <button class="lgb btn press" data-open="${s.id}">Перейти</button>
+      </div>
+    </div>
+  </article>`;
+}
+
+/* Keyed list render with FLIP: kept cards glide to their new place, new ones materialize */
+function renderList(container, html) {
+  const before = new Map($$('[data-key]', container).map((el) => [el.dataset.key, el.getBoundingClientRect()]));
+  container.innerHTML = html;
+  $$('[data-key]', container).forEach((el, i) => {
+    if (REDUCED) return;
+    const prev = before.get(el.dataset.key);
+    if (prev) {
+      const now = el.getBoundingClientRect();
+      const dx = prev.left - now.left, dy = prev.top - now.top;
+      if (dx || dy) el.animate([{ transform: `translate(${dx}px,${dy}px)` }, { transform: 'none' }], { duration: 700, easing: SPRING });
+    } else {
+      el.style.animationDelay = (i * 45) + 'ms';
+      el.classList.add('mat');
+    }
+  });
+}
+
+function filtersHTML(f) {
+  const pct = ((f.maxPrice - 100) / 300) * 100;
+  return `
+    <div class="lg card panel">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <label for="fPrice" style="font-size:15px;font-weight:600">Цена за месяц</label>
+        <span data-price-val style="font-size:15px;color:var(--text-2)">до ${rub(f.maxPrice)}</span>
+      </div>
+      <input id="fPrice" class="range" type="range" min="100" max="400" step="10" value="${f.maxPrice}" style="--p:${pct}%">
+    </div>
+    <div>
+      <p class="label">Протоколы</p>
+      <div class="chips">${PROTOCOLS.map((p) => { const on = f.protocols.includes(p); return `<button type="button" class="${on ? 'sel' : 'fill'} chip press" aria-pressed="${on}" data-proto="${esc(p)}">${esc(p)}</button>`; }).join('')}</div>
+    </div>
+    <div>
+      <p class="label">Возможности</p>
+      <div class="lg card group">${FLAGS.map(([k, l]) => `<label class="row"><span>${l}</span><input class="sw" type="checkbox" data-flag="${k}" ${f[k] ? 'checked' : ''}></label>`).join('')}</div>
+    </div>
+    <div>
+      <p class="label">Платформы</p>
+      <div class="lg card group">${PLATFORMS.map((p, i) => `<label class="row"><span>${p}</span><input class="sw" type="checkbox" data-plat="${i}" ${f.platforms.includes(i) ? 'checked' : ''}></label>`).join('')}</div>
+    </div>`;
+}
+
+function bindFilters(root, f, onChange) {
+  const range = $('#fPrice', root);
+  range.addEventListener('input', () => {
+    f.maxPrice = Number(range.value);
+    range.style.setProperty('--p', ((f.maxPrice - 100) / 300) * 100 + '%');
+    $('[data-price-val]', root).textContent = 'до ' + rub(f.maxPrice);
+    onChange();
+  });
+  $$('[data-proto]', root).forEach((b) => b.addEventListener('click', () => {
+    hapticSelect();
+    const p = b.dataset.proto;
+    f.protocols = f.protocols.includes(p) ? f.protocols.filter((x) => x !== p) : [...f.protocols, p];
+    const on = f.protocols.includes(p);
+    b.className = (on ? 'sel' : 'fill') + ' chip press';
+    b.setAttribute('aria-pressed', on);
+    replay(b, 'bump');
+    onChange();
+  }));
+  $$('[data-flag]', root).forEach((c) => c.addEventListener('change', () => { hapticSelect(); f[c.dataset.flag] = c.checked; onChange(); }));
+  $$('[data-plat]', root).forEach((c) => c.addEventListener('change', () => {
+    hapticSelect();
+    const i = Number(c.dataset.plat);
+    f.platforms = c.checked ? [...f.platforms, i] : f.platforms.filter((x) => x !== i);
+    onChange();
+  }));
+}
+
+function renderDesktopFilters() {
+  const box = $('#filtersDesktop');
+  box.innerHTML = filtersHTML(state.filters);
+  bindFilters(box, state.filters, () => renderResults());
+}
+
+function renderSearchFields() {
+  $('#vCountry').textContent = nameOf(COUNTRIES, state.country);
+  $('#vPeriod').textContent = nameOf(PERIODS, state.period);
+  $('#vDevices').textContent = nameOf(DEVICES, state.devices);
+  $('#vProtocol').textContent = state.protocol === 'any' ? 'Любой' : state.protocol;
+}
+
+function renderPeriods() {
+  const base = SERVICES.filter((s) => matchesBase(s));
+  $('#periods').innerHTML = PERIODS.map((p) => {
+    const min = base.length ? Math.min(...base.map((s) => s.prices[p.id])) : null;
+    const on = p.id === state.period;
+    return `<button type="button" class="card ${on ? 'sel' : ''} period press" role="radio" aria-checked="${on}" data-period="${p.id}">
+      <span class="k">${p.name}</span><span class="v">${min ? rub(min) : '—'}</span></button>`;
+  }).join('');
+}
+
+function renderSort(animate) {
+  $$('#sortSeg > button').forEach((b) => b.setAttribute('aria-selected', b.dataset.sort === state.sort));
+  moveIndicator($('#sortSeg'), animate);
+}
+
+function renderResults() {
+  renderPeriods();
+  const list = getResults();
+  const badges = getBadges(list);
+  $('#count').textContent = list.length
+    ? `${list.length} ${plural(list.length, 'сервис', 'сервиса', 'сервисов')} · цены при оплате на ${nameOf(PERIODS, state.period)}`
+    : 'Ничего не найдено';
+  const n = activeFilterCount();
+  $('#filterDot').hidden = !n;
+  $('#filterDot').textContent = n;
+  renderList($('#results'), list.length
+    ? list.map((s) => cardHTML(s, badges[s.id])).join('')
+    : `<div class="lg card empty mat"><p>Под выбранные условия ничего не подошло. Попробуйте ослабить фильтры или выбрать другую страну.</p>
+       <button type="button" class="lgb btn press" data-action="reset-all">Сбросить условия</button></div>`);
+}
+
+function renderFav() {
+  const list = SERVICES.filter((s) => state.favorites.includes(s.id));
+  renderList($('#favList'), list.length
+    ? list.map((s) => cardHTML(s)).join('')
+    : `<div class="lg card empty mat"><p>Здесь появятся сервисы, отмеченные сердечком.</p>
+       <button type="button" class="lgb btn press" data-tab="search">Перейти к поиску</button></div>`);
+}
+
+function renderCompare() {
+  const list = SERVICES.filter((s) => state.favorites.includes(s.id));
+  if (list.length < 2) {
+    $('#cmpBox').innerHTML = `<div class="lg card empty mat"><p>Добавьте в избранное хотя бы два сервиса, и здесь появится таблица сравнения.</p>
+      <button type="button" class="lgb btn press" data-tab="search">Выбрать сервисы</button></div>`;
+    return;
+  }
+  const rows = [
+    ['Цена в месяц', (s) => s.prices[state.period], rub, 'min'],
+    ['Скорость', (s) => s.speed, (x) => x + ' Мбит/с', 'max'],
+    ['Пинг', (s) => s.ping, (x) => x + ' мс', 'min'],
+    ['Страны', (s) => s.countriesCount, (x) => x, 'max'],
+    ['Устройства', (s) => s.devices, (x) => 'до ' + x, 'max'],
+    ['Рейтинг', (s) => s.rating, rating, 'max'],
+    ['Протоколы', (s) => s.protocols.join(', '), (x) => x],
+    ['Пробный период', (s) => (s.trial ? 'Есть' : 'Нет'), (x) => x]
+  ];
+  const body = rows.map(([k, get, f, best]) => {
+    const vals = list.map(get);
+    const target = best === 'min' ? Math.min(...vals) : best === 'max' ? Math.max(...vals) : null;
+    return `<tr><th scope="row">${k}</th>${vals.map((v) => `<td class="${target !== null && v === target ? 'best' : ''}">${esc(f(v))}</td>`).join('')}</tr>`;
+  }).join('');
+  $('#cmpBox').innerHTML = `
+    <p style="margin:0 8px 14px;font-size:15px;color:var(--text-3)">Цены при оплате на ${nameOf(PERIODS, state.period)}. Лучшие значения выделены зелёным.</p>
+    <div class="lg card cmp-wrap mat"><table class="cmp">
+      <thead><tr><th scope="col"><span class="sr">Параметр</span></th>${list.map((s) => `<th scope="col">${esc(s.name)}</th>`).join('')}</tr></thead>
+      <tbody>${body}</tbody></table></div>`;
+}
+
+function renderTabs(animate) {
+  $$('[data-view]').forEach((v) => {
+    const show = v.dataset.view === state.tab;
+    if (show && v.hidden && animate) replay(v, 'mat');
+    v.hidden = !show;
+  });
+  $$('[data-seg="nav"] > button, [data-seg="tabbar"] > button').forEach((b) => b.setAttribute('aria-selected', b.dataset.tab === state.tab));
+  $$('[data-seg="nav"], [data-seg="tabbar"]').forEach((s) => moveIndicator(s, animate));
+}
+
+function render(animate = true) {
+  renderTabs(animate);
+  renderSearchFields();
+  renderSort(animate);
+  renderResults();
+  if (state.tab === 'fav') renderFav();
+  if (state.tab === 'cmp') renderCompare();
+}
+
+/* =========================================================
+   Sheets: spring in, page recedes behind like iOS
+   ========================================================= */
+let sheetOpen = false;
+function openSheet(title, html, onMount) {
+  $('#sheetTitle').textContent = title;
+  $('#sheetBody').innerHTML = html;
+  $('#overlay').classList.add('open');
+  $('#sheet').classList.add('open');
+  $('#page').classList.add('behind');
+  sheetOpen = true;
+  try { tg.BackButton.show(); } catch (e) {}
+  if (onMount) onMount($('#sheetBody'));
+}
+function closeSheet() {
+  $('#overlay').classList.remove('open');
+  $('#sheet').classList.remove('open');
+  $('#page').classList.remove('behind');
+  sheetOpen = false;
+  try { tg.BackButton.hide(); } catch (e) {}
+}
+
+function optionSheet(title, items, current, onPick) {
+  const html = `<div class="lg card group" role="radiogroup">${items.map((it) =>
+    `<button type="button" class="row" role="radio" aria-checked="${it.id === current}" data-id="${esc(it.id)}"><span>${esc(it.name)}</span>${CHECK}</button>`).join('')}</div>`;
+  openSheet(title, html, (root) => {
+    $$('[data-id]', root).forEach((b) => b.addEventListener('click', () => {
+      hapticSelect();
+      $$('[data-id]', root).forEach((x) => x.setAttribute('aria-checked', x === b));
+      const raw = b.dataset.id;
+      onPick(isNaN(raw) ? raw : Number(raw));
+      setTimeout(() => { closeSheet(); render(); }, REDUCED ? 0 : 220);
+    }));
+  });
+}
+
+function filtersSheet() {
+  const f = JSON.parse(JSON.stringify(state.filters));
+  const draw = () => filtersHTML(f) + `
+    <div style="display:flex;gap:10px">
+      <button type="button" class="fill cta press" id="fReset" style="flex:1">Сбросить</button>
+      <button type="button" class="lgb cta press" id="fApply" style="flex:2">Показать</button>
+    </div>`;
+  const mount = (root) => {
+    const apply = $('#fApply', root);
+    const update = () => {
+      const n = getResults(f).length;
+      apply.textContent = n ? `Показать ${n} ${plural(n, 'сервис', 'сервиса', 'сервисов')}` : 'Ничего не найдено';
+    };
+    bindFilters(root, f, update);
+    update();
+    $('#fReset', root).addEventListener('click', () => {
+      haptic();
+      Object.assign(f, DEFAULT_FILTERS());
+      $('#sheetBody').innerHTML = draw();
+      mount($('#sheetBody'));
+    });
+    apply.addEventListener('click', () => {
+      haptic('medium');
+      state.filters = f;
+      closeSheet();
+      render();
+      renderDesktopFilters();
+      scrollToResults();
+    });
+  };
+  openSheet('Фильтры', draw(), mount);
+}
+
+function detailSheet(id) {
+  const s = SERVICES.find((x) => x.id === id);
+  if (!s) return;
+  let plan = state.period;
+  const base = s.prices[1];
+  const yes = (v, a = 'Есть', b = 'Нет') => `<span class="${v ? 'ok' : 'no'}">${v ? a : b}</span>`;
+  const html = `
+    <div style="display:flex;align-items:center;gap:14px;padding:0 4px">
+      <span class="lgs logo" style="width:60px;height:60px;border-radius:20px;font-size:26px" aria-hidden="true">${esc(s.name[0])}</span>
+      <div>
+        <div style="font-size:22px;font-weight:700;letter-spacing:-.02em">${esc(s.name)}</div>
+        <div class="meta">★ ${rating(s.rating)} · ${fmt(s.reviews)} ${plural(s.reviews, 'отзыв', 'отзыва', 'отзывов')}</div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="card stat"><span class="k">Скорость</span><span class="v">${s.speed} Мбит/с</span></div>
+      <div class="card stat"><span class="k">Пинг</span><span class="v">${s.ping} мс</span></div>
+      <div class="card stat"><span class="k">Страны</span><span class="v">${s.countriesCount}</span></div>
+    </div>
+    <div>
+      <p class="label">Тариф</p>
+      <div class="lg card group" role="radiogroup" aria-label="Тариф">
+        ${PERIODS.map((p) => {
+          const m = s.prices[p.id];
+          const save = Math.round((1 - m / base) * 100);
+          return `<button type="button" class="row plan" role="radio" aria-checked="${p.id === plan}" data-plan="${p.id}">
+            <span><span style="font-weight:600">${p.name}</span>${save > 0 ? `<span class="save">−${save}%</span>` : ''}
+            <span class="sub">${rub(m)} в месяц · ${rub(m * p.id)} всего</span></span>
+            <span class="radio"></span></button>`;
+        }).join('')}
+      </div>
+    </div>
+    <div>
+      <p class="label">Что входит</p>
+      <div class="lg card group">
+        <div class="row"><span>Протоколы</span><span style="color:var(--text-2);text-align:right">${esc(s.protocols.join(', '))}</span></div>
+        <div class="row"><span>Устройства</span><span style="color:var(--text-2)">до ${s.devices}</span></div>
+        <div class="row"><span>Пробный период</span>${yes(s.trial)}</div>
+        <div class="row"><span>Оплата через СБП</span>${yes(s.sbp)}</div>
+        <div class="row"><span>Без хранения логов</span>${yes(s.nologs, 'Да', 'Нет данных')}</div>
+        <div class="row"><span>Работает при ограничениях</span>${yes(s.works, 'Да', 'Нет')}</div>
+      </div>
+    </div>
+    <button type="button" class="lgb cta press" id="dGo">Перейти к оплате · ${rub(s.prices[plan] * plan)}</button>
+    <button type="button" class="fill cta press" id="dFav">${state.favorites.includes(s.id) ? 'Убрать из избранного' : 'Добавить в избранное'}</button>`;
+  openSheet('', html, (root) => {
+    $$('[data-plan]', root).forEach((b) => b.addEventListener('click', () => {
+      hapticSelect();
+      plan = Number(b.dataset.plan);
+      $$('[data-plan]', root).forEach((x) => x.setAttribute('aria-checked', Number(x.dataset.plan) === plan));
+      $('#dGo', root).textContent = `Перейти к оплате · ${rub(s.prices[plan] * plan)}`;
+      replay($('#dGo', root), 'bump');
+    }));
+    $('#dGo', root).addEventListener('click', () => { haptic('medium'); openExternal(s.url); });
+    $('#dFav', root).addEventListener('click', () => {
+      toggleFav(s.id);
+      $('#dFav', root).textContent = state.favorites.includes(s.id) ? 'Убрать из избранного' : 'Добавить в избранное';
+    });
+  });
+}
+
+/* =========================================================
+   Actions
+   ========================================================= */
+function toggleFav(id, btn) {
+  haptic();
+  const had = state.favorites.includes(id);
+  state.favorites = had ? state.favorites.filter((x) => x !== id) : [...state.favorites, id];
+  saveFavorites();
+  toast(had ? 'Удалено из избранного' : 'Добавлено в избранное');
+  const scope = btn ? btn.closest('#results, #favList') : null;
+  render(false);
+  if (scope && !had) replay($(`[data-fav="${id}"]`, scope), 'pop');
+}
+function setTab(tab) {
+  if (tab === state.tab) return;
+  hapticSelect();
+  state.tab = tab;
+  window.scrollTo({ top: 0, behavior: REDUCED ? 'auto' : 'smooth' });
+  render(true);
+}
+function scrollToResults() {
+  const el = $('#resultsTop');
+  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' });
+}
+let toastTimer;
+function toast(text) {
+  const t = $('#toast');
+  t.textContent = text;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+/* =========================================================
+   Events
+   ========================================================= */
+// Touch-down glow under the finger + press scale on every glass control
+document.addEventListener('pointerdown', (e) => {
+  const el = e.target.closest('.press, .seg > button');
+  if (!el) return;
+  const target = el.classList.contains('press') ? el : el.closest('.seg');
+  const r = target.getBoundingClientRect();
+  target.style.setProperty('--gx', ((e.clientX - r.left) / r.width) * 100 + '%');
+  target.style.setProperty('--gy', ((e.clientY - r.top) / r.height) * 100 + '%');
+  if (el.classList.contains('press')) el.classList.add('pressed');
+});
+const release = () => $$('.pressed').forEach((el) => el.classList.remove('pressed'));
+['pointerup', 'pointercancel', 'dragstart'].forEach((ev) => document.addEventListener(ev, release, true));
+window.addEventListener('blur', release);
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('button, a[data-goto]');
+  if (!el) return;
+  const d = el.dataset;
+  if (d.goto) { e.preventDefault(); setTab(d.goto); return; }
+  if (d.sheet) {
+    haptic();
+    if (d.sheet === 'country') optionSheet('Страна сервера', COUNTRIES, state.country, (v) => { state.country = v; });
+    if (d.sheet === 'period') optionSheet('Срок подписки', PERIODS, state.period, (v) => { state.period = v; });
+    if (d.sheet === 'devices') optionSheet('Устройства', DEVICES, state.devices, (v) => { state.devices = v; });
+    if (d.sheet === 'protocol') optionSheet('Протокол', [{ id: 'any', name: 'Любой' }, ...PROTOCOLS.map((p) => ({ id: p, name: p }))], state.protocol, (v) => { state.protocol = v; });
+    return;
+  }
+  if (d.period) {
+    hapticSelect();
+    state.period = Number(d.period);
+    renderSearchFields(); renderResults();
+    replay($(`[data-period="${d.period}"]`), 'bump');
+    return;
+  }
+  if (d.sort) { if (d.sort === state.sort) return; hapticSelect(); state.sort = d.sort; renderSort(true); renderResults(); return; }
+  if (d.fav) { toggleFav(d.fav, el); return; }
+  if (d.open) { haptic(); detailSheet(d.open); return; }
+  if (d.tab) { setTab(d.tab); return; }
+  if (d.action === 'reset-filters') { haptic(); state.filters = DEFAULT_FILTERS(); renderDesktopFilters(); renderResults(); return; }
+  if (d.action === 'reset-all') { haptic(); state.filters = DEFAULT_FILTERS(); state.country = 'any'; state.protocol = 'any'; state.devices = 1; renderDesktopFilters(); render(); return; }
+});
+$('#searchForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  haptic('medium');
+  const n = getResults().length;
+  toast(n ? `Найдено ${n} ${plural(n, 'сервис', 'сервиса', 'сервисов')}` : 'Ничего не найдено');
+  scrollToResults();
+});
+$('#btnFilters').addEventListener('click', () => { haptic(); filtersSheet(); });
+$('#btnLogin').addEventListener('click', () => toast('Вход появится в следующей версии'));
+$('#overlay').addEventListener('click', closeSheet);
+$('#sheetClose').addEventListener('click', closeSheet);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sheetOpen) closeSheet(); });
+try { tg.BackButton.onClick(closeSheet); } catch (e) {}
+
+// Scroll edge effect + compact header
+const onScroll = () => document.body.classList.toggle('scrolled', window.scrollY > 24);
+window.addEventListener('scroll', onScroll, { passive: true });
+window.addEventListener('resize', () => $$('.seg').forEach((s) => moveIndicator(s, false)));
+
+renderDesktopFilters();
+render(false);
+onScroll();
+requestAnimationFrame(() => $$('.seg').forEach((s) => moveIndicator(s, false)));
+if (document.fonts) document.fonts.ready.then(() => $$('.seg').forEach((s) => moveIndicator(s, false)));
+$$('[data-lens]').forEach(applyLens);
+</script>
+</body>
+</html>

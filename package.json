@@ -1,0 +1,14 @@
+{
+  "name": "linza",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Линза — честный каталог VPN-сервисов в Telegram Mini App",
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server/index.js",
+    "dev": "ALLOW_DEV_AUTH=1 node --disable-warning=ExperimentalWarning --watch server/index.js",
+    "seed": "node --disable-warning=ExperimentalWarning seed/seed.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
+  }
+}
