@@ -67,6 +67,7 @@ let sheetState = null;
 let routeBack = null;
 // The router tells us what Back means when no sheet is open.
 export function setRouteBack(fn) { routeBack = fn; if (!sheetState) setBack(fn); }
+export const currentRouteBack = () => routeBack;
 
 export function openSheet(title, html, onMount, { main } = {}) {
   if (sheetState) closeSheet(true);
@@ -332,7 +333,7 @@ export function keyBadges(s, limit = 4) {
   return out.slice(0, limit).join('');
 }
 
-export function vpnCardHTML(s, { fav = false, cmp = false } = {}) {
+export function vpnCardHTML(s, { fav = false, cmp = false, why = '' } = {}) {
   return `
   <article class="card vpn press" data-key="${s.id}" data-open="${s.id}" data-impression="${s.id}">
     <div class="vpn-head">
@@ -346,7 +347,7 @@ export function vpnCardHTML(s, { fav = false, cmp = false } = {}) {
       </div>
       <button type="button" class="fill circle fav press" data-fav="${s.id}" aria-pressed="${fav}" aria-label="${fav ? 'Убрать из избранного' : 'В избранное'}">${icon.heart(fav)}</button>
     </div>
-    <div class="badges">${topTag(s.top)}${keyBadges(s, s.top ? 2 : 3)}</div>
+    ${why ? `<p class="why">${esc(why)}</p>` : `<div class="badges">${topTag(s.top)}${keyBadges(s, s.top ? 2 : 3)}</div>`}
     <div class="vpn-foot">
       <div class="stack-sm price" style="gap:6px"><span class="price-line"><span class="from">от</span><b>${rub(s.min_monthly)}</b><small>/мес</small></span>${s.market === 'below' ? `<span>${marketTag(s.market)}</span>` : ''}</div>
       <div class="vpn-actions">

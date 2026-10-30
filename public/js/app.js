@@ -5,6 +5,7 @@ import { store, subscribe, loadMe, toggleFavorite, toggleCompare } from './store
 import home from './views/home.js';
 import catalog from './views/catalog.js';
 import service, { goToBot } from './views/service.js';
+import pick from './views/pick.js';
 import compare from './views/compare.js';
 import favorites from './views/favorites.js';
 import { profile, myReviews, history as historyView, notifySettings } from './views/profile.js';
@@ -21,7 +22,7 @@ function toPanel(root, { path, query }) {
 
 const routes = [
   ['/', home], ['/catalog', catalog], ['/compare', compare], ['/favorites', favorites], ['/profile', profile],
-  ['/service/:id', service], ['/top', topArchive], ['/top/:period', topArchive],
+  ['/service/:id', service], ['/pick', pick], ['/top', topArchive], ['/top/:period', topArchive],
   ['/profile/reviews', myReviews], ['/profile/history', historyView], ['/profile/notify', notifySettings],
   ['/owner', ownerHome], ['/owner/apply', ownerApply], ['/owner/:id', ownerService],
   ['/admin', toPanel], ['/admin/:section', toPanel]
@@ -214,7 +215,7 @@ function routeFromStartParam(p) {
   if ((m = p.match(/^s_(\d+)$/))) return `/service/${m[1]}`;
   if ((m = p.match(/^owner_(\d+)$/))) return `/owner/${m[1]}`;
   if ((m = p.match(/^admin_([a-z]+)$/))) return `/admin/${m[1]}`;
-  if (['owner', 'top', 'profile', 'admin', 'catalog', 'compare', 'favorites'].includes(p)) return `/${p}`;
+  if (['owner', 'top', 'profile', 'admin', 'catalog', 'compare', 'favorites', 'pick'].includes(p)) return `/${p}`;
   return null;
 }
 

@@ -560,3 +560,14 @@ details > summary::-webkit-details-marker { display: none }
 @media (min-width: 560px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)) } .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)) } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important } }
 @media (prefers-reduced-transparency: reduce) { .lg, .lgs, .lgb, .card, .sheet { -webkit-backdrop-filter: none; backdrop-filter: none } .lg, .card { background: var(--bg) } }
+
+/* «Подобрать VPN» */
+.pick { display: flex; flex-direction: column; gap: 18px; padding-top: 8px }
+.pick .title { font-size: 28px; line-height: 1.15 }
+.pick-steps { display: flex; gap: 6px }
+.pick-steps i { flex: 1; height: 4px; border-radius: 999px; background: var(--well); transition: background .3s }
+.pick-steps i.on { background: var(--accent) }
+.pick-opts { display: flex; flex-direction: column; gap: 10px; margin-top: 4px }
+.pick-opt { min-height: 56px; border-radius: 18px; padding: 0 18px; font-size: 17px; font-weight: 600; text-align: left; display: flex; align-items: center }
+.why { margin: 0; font-size: 14px; color: var(--good); font-weight: 500 }
+.pick-entry { width: 100%; margin-top: 10px }

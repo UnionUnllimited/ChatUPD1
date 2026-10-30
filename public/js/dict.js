@@ -62,6 +62,22 @@ export const PAYMENTS = [
 
 export const DEVICE_OPTIONS = [1, 2, 3, 5, 10];
 
+// «Подобрать VPN»: one-tap questions; the server matches on the option ids (lib/pick.js).
+export const PICK_QUESTIONS = [
+  { key: 'device', title: 'Где будете пользоваться?', options: [
+    { id: 'ios', name: 'iPhone или iPad' }, { id: 'android', name: 'Android' }, { id: 'windows', name: 'Компьютер на Windows' },
+    { id: 'macos', name: 'Mac' }, { id: 'any', name: 'На разных устройствах' }] },
+  { key: 'devices', title: 'Сколько устройств подключить?', options: [
+    { id: '1', name: 'Одно' }, { id: '3', name: 'Два-три' }, { id: '4', name: 'Четыре и больше' }] },
+  { key: 'whitelist', title: 'Бывает, что на мобильном открываются только разрешённые сайты?', hint: 'Так работают «белые списки» у операторов в некоторых регионах.', options: [
+    { id: 'yes', name: 'Да, бывает' }, { id: 'no', name: 'Нет' }, { id: 'unknown', name: 'Не знаю' }] },
+  { key: 'payment', title: 'Как удобнее платить?', options: [
+    { id: 'sbp', name: 'СБП' }, { id: 'card_ru', name: 'Российская карта' }, { id: 'stars', name: 'Telegram Stars' },
+    { id: 'crypto', name: 'Криптовалюта' }, { id: 'any', name: 'Не важно' }] },
+  { key: 'budget', title: 'Сколько готовы платить в месяц?', options: [
+    { id: '150', name: 'До 150 ₽' }, { id: '300', name: 'До 300 ₽' }, { id: 'any', name: 'Не важно' }] }
+];
+
 export const SORTS = [
   { id: 'price', name: 'Цена' },
   { id: 'rating', name: 'Рейтинг' },

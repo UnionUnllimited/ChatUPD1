@@ -56,11 +56,12 @@ export default async function home(root, { navigate }) {
         <input type="search" name="q" placeholder="Название VPN" enterkeyhint="search" autocomplete="off" aria-label="Поиск по названию">
         <button type="submit" class="solid btn sm press">Найти</button>
       </form>
+      <button type="button" class="lgb btn press pick-entry" data-nav="/pick">Подобрать VPN за 30 секунд</button>
     </section>
     <div class="chips scroll" id="quick" style="margin-top:-12px"></div>
     <section id="topSec">${skeletonHTML(1)}</section>
     <section id="promoSec"></section>
-    <p class="note center">Рейтинг строится по отзывам, переходам и ручным проверкам. Платные места всегда отмечены «Реклама» и не влияют на него.</p>`;
+    <p class="note center">Рейтинг строится по отзывам, переходам и стабильности по сигналам клиентов. Платные места всегда отмечены «Реклама» и не влияют на него.</p>`;
 
   applyLens($('#homeSearch', root));
   $('#homeSearch', root).addEventListener('submit', (e) => {

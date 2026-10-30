@@ -2,6 +2,7 @@ import { snapshot, parseFilters, filterItems, toListItem } from '../lib/catalog.
 import { latestTop, topFor, topArchive } from '../lib/top.js';
 import { canReview } from '../lib/moderation.js';
 import { serviceHealth } from '../lib/health.js';
+import { parseAnswers, pickServices } from '../lib/pick.js';
 import { notFound, intParam, badRequest } from '../lib/http.js';
 import { appLink } from '../config.js';
 import { isPeriod, now } from '../lib/time.js';
@@ -71,6 +72,8 @@ export function publicRoutes(r, { db }) {
     const dist = db.all("SELECT rating, COUNT(*) n FROM reviews WHERE service_id = ? AND status = 'approved' GROUP BY rating", id);
     return { items, distribution: Object.fromEntries(dist.map((d) => [d.rating, d.n])) };
   });
+
+  r.get('/api/pick', ({ query }) => pickServices(snapshot(db).items, parseAnswers(query)));
 
   r.get('/api/compare', ({ query }) => {
     const ids = String(query.ids || '').split(',').map(Number).filter(Number.isSafeInteger).slice(0, 3);
