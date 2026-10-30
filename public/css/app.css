@@ -20,8 +20,10 @@
   --warn: #8A5300;
   --star: #E3A008;
   --chart: #0B8F88;               /* bar marks: >= 3:1 against light surfaces */
-  --main-bg: #CDE6E9;             /* native MainButton: accent glass tint flattened onto the page */
-  --main-text: #05605C;
+  --main-bg: #0A7F79;             /* native MainButton: solid turquoise, white text 4.9:1 */
+  --main-text: #FFFFFF;
+  --cta-bg: #0A7F79;              /* "Перейти в бот" — the one solid button on a page */
+  --cta-text: #FFFFFF;
 
   /* glass materials */
   --float-a: rgba(255, 255, 255, .5);
@@ -62,53 +64,54 @@
 }
 
 :root[data-theme="dark"] {
-  /* Modelled on the reference home screen: pure black canvas, smoky grey glass tiles
-     (white at ~15–30% over black ≈ #262626–#4A4A4A) with a crisp 1px silver rim,
-     white type, and a filled turquoise pill for the primary action. */
+  /* iPhone dark mode: black canvas, grouped cells #1C1C1E / #2C2C2E, system fills
+     (118,118,128 at 18–36%), labels white / 60% grey, hairline separators, no shadows. */
   --bg: #000000;
   --text: #FFFFFF;
-  --text-2: #D9D9DE;
-  --text-3: #A1A1A6;
-  --sep: rgba(255, 255, 255, .13);
-  --accent: #6EC4BD;
-  --accent-rgb: 110, 196, 189;
-  --accent-ink: #9FE6DD;
-  --on-accent: #12404D;
-  --good: #7DD9A3;
-  --bad: #FF8A8A;
-  --warn: #F2C26B;
-  --star: #F2C94C;
-  --chart: #22A496;               /* validated: L 0.48–0.67, >= 3:1 on #2B2B2B tiles */
-  --main-bg: #6EC4BD;             /* native MainButton = the reference's filled turquoise pill */
-  --main-text: #12404D;
+  --text-2: #D1D1D6;
+  --text-3: #8E8E93;
+  --sep: rgba(84, 84, 88, .6);
+  --accent: #40C9BE;
+  --accent-rgb: 64, 201, 190;
+  --accent-ink: #5FDACF;
+  --on-accent: #002723;
+  --good: #30D158;
+  --bad: #FF453A;
+  --warn: #FFD60A;
+  --star: #FFD60A;
+  --chart: #22A496;               /* validated: L 0.48–0.67, >= 3:1 on #1C1C1E */
+  --main-bg: #40C9BE;
+  --main-text: #002723;
+  --cta-bg: #40C9BE;
+  --cta-text: #002723;
 
-  --float-a: rgba(30, 30, 32, .82);
-  --float-b: rgba(22, 22, 24, .82);
-  --card-a: rgba(44, 44, 46, .97);   /* sticky table column */
-  --card-b: rgba(255, 255, 255, .15);
-  --thumb: rgba(255, 255, 255, .26);
+  --float-a: rgba(30, 30, 32, .74);
+  --float-b: rgba(30, 30, 32, .74);
+  --card-a: #1C1C1E;
+  --card-b: #1C1C1E;
+  --thumb: #636366;
   --tint: rgba(var(--accent-rgb), .2);
-  --tint-sel: rgba(var(--accent-rgb), .14);
-  --spec-1: rgba(255, 255, 255, .3);
-  --spec-2: rgba(255, 255, 255, .06);
-  --spec-3: rgba(255, 255, 255, .03);
-  --spec-4: rgba(255, 255, 255, .14);
-  --edge: rgba(255, 255, 255, .38);
-  --edge-soft: rgba(255, 255, 255, .2);
-  --inner-glow: rgba(255, 255, 255, .2);
-  --lens-shade: rgba(0, 0, 0, .4);
-  --hairline: rgba(255, 255, 255, .1);
-  --shadow: 0 12px 30px -14px rgba(0, 0, 0, .9);
-  --card-shadow: 0 12px 30px -16px rgba(0, 0, 0, .9);
-  --well: rgba(0, 0, 0, .42);
-  --well-shadow: inset 0 1px 3px rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(255, 255, 255, .22);
-  --overlay: rgba(0, 0, 0, .6);
-  --sheet-bg: rgba(30, 30, 32, .9);
+  --tint-sel: rgba(var(--accent-rgb), .16);
+  --spec-1: rgba(255, 255, 255, .2);
+  --spec-2: rgba(255, 255, 255, .04);
+  --spec-3: rgba(255, 255, 255, .02);
+  --spec-4: rgba(255, 255, 255, .08);
+  --edge: rgba(255, 255, 255, .12);
+  --edge-soft: rgba(255, 255, 255, .06);
+  --inner-glow: rgba(255, 255, 255, .1);
+  --lens-shade: rgba(0, 0, 0, .3);
+  --hairline: rgba(255, 255, 255, .12);
+  --shadow: 0 10px 30px rgba(0, 0, 0, .5);
+  --card-shadow: none;
+  --well: rgba(118, 118, 128, .24);
+  --well-shadow: none;
+  --overlay: rgba(0, 0, 0, .5);
+  --sheet-bg: #1C1C1E;
   --blob-1: transparent;
   --blob-2: transparent;
   --blob-3: transparent;
   --blob-4: transparent;
-  --glow: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgba(255, 255, 255, calc(var(--g) * .16)), rgba(255, 255, 255, 0) 60%);
+  --glow: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgba(255, 255, 255, calc(var(--g) * .1)), rgba(255, 255, 255, 0) 60%);
 }
 
 @supports (transition-timing-function: linear(0, 1)) {
@@ -265,7 +268,14 @@ h3 { font-size: 17px; font-weight: 600; letter-spacing: -.01em }
 .circle.sm { width: 44px; height: 44px }
 .cta { min-height: 54px; border-radius: 999px; font-size: 17px; font-weight: 600; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 20px }
 .danger { color: var(--bad) !important }
-.fallback-main { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--tab-h) + 26px + var(--safe-b)); width: min(calc(100% - 32px), 528px); z-index: 55; transition: bottom .4s var(--spring) }
+.cta-bot { position: relative; min-height: 58px; border-radius: 18px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 8px 20px;
+  background: var(--cta-bg); color: var(--cta-text); font-size: 17px; font-weight: 700; box-shadow: 0 10px 24px -12px rgba(var(--accent-rgb), .8); transition: transform .5s var(--spring) }
+.cta-bot.pressed { transform: scale(.97); transition: transform .12s ease-out }
+.cta-bot small { display: block; font-size: 12.5px; font-weight: 500; opacity: .85 }
+.cta-bot > span { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2 }
+.go-bot { color: var(--cta-text) !important; background: var(--cta-bg) !important; box-shadow: none !important }
+.go-bot::before { display: none }
+.fallback-main { background: var(--main-bg); color: var(--main-text); box-shadow: 0 10px 26px -10px rgba(0, 0, 0, .35); position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--tab-h) + 26px + var(--safe-b)); width: min(calc(100% - 32px), 528px); z-index: 55; transition: bottom .4s var(--spring) }
 /* Outside Telegram the in-page main button docks to the bottom of an open sheet. */
 body.sheet-open .fallback-main { bottom: calc(14px + var(--safe-b)) }
 body.sheet-open.has-main .sheet { padding-bottom: calc(84px + var(--safe-b)) }
@@ -469,80 +479,46 @@ details > summary::-webkit-details-marker { display: none }
 .toast { position: fixed; left: 50%; top: calc(12px + var(--safe-t) + env(safe-area-inset-top, 0px)); transform: translate(-50%, -200%) scale(.9); visibility: hidden; transition: transform .35s ease-in, visibility .35s; z-index: 60; border-radius: 999px; padding: 12px 20px; font-size: 14px; font-weight: 600; max-width: calc(100% - 32px); text-align: center }
 .toast.show { transform: translate(-50%, 0) scale(1); visibility: visible; transition: transform .6s var(--spring-bouncy), visibility 0s }
 
-/* ================= Dark: smoky glass tiles =================
-   Matches the reference: every surface is translucent white over black, so it reads
-   as grey glass (#262626–#4A4A4A); each tile has a crisp 1px silver rim, brighter on
-   top. Turquoise is a filled pill only on the primary action; type is white/chrome. */
-:root[data-theme="dark"] .card::before, :root[data-theme="dark"] .lg::before, :root[data-theme="dark"] .fill::before,
-:root[data-theme="dark"] .lgs::before, :root[data-theme="dark"] .sel::before, :root[data-theme="dark"] .lgb::before,
-:root[data-theme="dark"] .solid::before { display: none }
-:root[data-theme="dark"] .card {
-  background: var(--glow), linear-gradient(180deg, rgba(255, 255, 255, .215) 0%, rgba(255, 255, 255, .17) 55%, rgba(255, 255, 255, .15) 100%);
-  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .36), inset 0 1px 0 rgba(255, 255, 255, .5), var(--card-shadow);
-}
-:root[data-theme="dark"] .hero {
-  background: linear-gradient(180deg, rgba(255, 255, 255, .29) 0%, rgba(255, 255, 255, .17) 45%, rgba(255, 255, 255, .11) 100%);
-  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .38), inset 0 1px 0 rgba(255, 255, 255, .55), var(--card-shadow);
-}
-:root[data-theme="dark"] .fill {
-  background: var(--glow), linear-gradient(180deg, rgba(255, 255, 255, .25), rgba(255, 255, 255, .19));
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .38), inset 0 1px 0 rgba(255, 255, 255, .52), 0 6px 14px -8px rgba(0, 0, 0, .9);
-}
-:root[data-theme="dark"] .lgs {
-  background: var(--glow), linear-gradient(170deg, rgba(255, 255, 255, .32), rgba(255, 255, 255, .16));
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .45), inset 0 1px 0 rgba(255, 255, 255, .62), 0 6px 14px -8px rgba(0, 0, 0, .9);
-}
-/* floating dock: tab bar, search capsule, toast — darker glass like the reference dock */
-:root[data-theme="dark"] .lg {
-  background: var(--glow), linear-gradient(180deg, var(--float-a), var(--float-b));
-  -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .4), inset 0 1px 0 rgba(255, 255, 255, .5), var(--shadow);
-}
-:root[data-theme="dark"] .hero .lg { background: var(--glow), rgba(0, 0, 0, .38) }
-:root[data-theme="dark"] .lgb, :root[data-theme="dark"] .solid {
-  color: var(--on-accent);
-  background: var(--glow), linear-gradient(180deg, #8AD4CD 0%, #6EC4BD 60%, #62B8B1 100%);
-  -webkit-backdrop-filter: none; backdrop-filter: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 0 0 1px rgba(255, 255, 255, .25), 0 8px 20px -10px rgba(var(--accent-rgb), .55);
-}
-:root[data-theme="dark"] .sel {
-  color: var(--accent-ink);
-  background: var(--glow), linear-gradient(180deg, rgba(var(--accent-rgb), .26), rgba(var(--accent-rgb), .14));
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), .75), inset 0 1px 0 rgba(255, 255, 255, .25);
-}
-:root[data-theme="dark"] .tabbar > button:not([aria-selected="true"]) { color: #E5E5EA }
-:root[data-theme="dark"] .tag { color: var(--accent-ink); background: rgba(var(--accent-rgb), .16); box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), .55) }
-:root[data-theme="dark"] .tag.neutral { color: #E5E5EA; background: rgba(255, 255, 255, .13); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3) }
-:root[data-theme="dark"] .tag.good { background: rgba(125, 217, 163, .14); box-shadow: inset 0 0 0 1px rgba(125, 217, 163, .5) }
-:root[data-theme="dark"] .tag.bad { background: rgba(255, 138, 138, .14); box-shadow: inset 0 0 0 1px rgba(255, 138, 138, .5) }
-:root[data-theme="dark"] .tag.warn { background: rgba(242, 194, 107, .14); box-shadow: inset 0 0 0 1px rgba(242, 194, 107, .5) }
-/* chrome type: silver gradients like the reference's "THURSDAY" and clock faces */
-:root[data-theme="dark"] .hero h1 span,
-:root[data-theme="dark"] .title,
-:root[data-theme="dark"] .kpi .v,
-:root[data-theme="dark"] .tile .n,
-:root[data-theme="dark"] .mono {
-  background: linear-gradient(180deg, #FFFFFF 0%, #EDEDF0 45%, #A1A1A6 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-:root[data-theme="dark"] .rank { color: #A1A1A6 }
+/* ================= Dark: iOS system appearance =================
+   Content is flat (grouped cells, system fills, hairlines, no shadows or rims);
+   only floating chrome — tab bar, toasts — is glass, as on iPhone. */
+:root[data-theme="dark"] .card::before, :root[data-theme="dark"] .fill::before, :root[data-theme="dark"] .lgs::before,
+:root[data-theme="dark"] .sel::before, :root[data-theme="dark"] .lgb::before, :root[data-theme="dark"] .solid::before,
+:root[data-theme="dark"] .seg:not(.tabbar)::before, :root[data-theme="dark"] .search::before { display: none }
+:root[data-theme="dark"] .card { background: var(--glow), #1C1C1E; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none }
+:root[data-theme="dark"] .sheet .card { background: var(--glow), #2C2C2E }
+:root[data-theme="dark"] .hero { background: radial-gradient(90% 80% at 8% 0%, rgba(var(--accent-rgb), .16), transparent 60%), #1C1C1E; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none }
+:root[data-theme="dark"] .fill { background: var(--glow), rgba(118, 118, 128, .24); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none }
+:root[data-theme="dark"] .lgs { background: var(--glow), #2C2C2E; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none }
+:root[data-theme="dark"] .lgb, :root[data-theme="dark"] .solid { color: var(--on-accent); background: var(--glow), var(--accent); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none }
+:root[data-theme="dark"] .sel { color: var(--accent-ink); background: var(--glow), rgba(var(--accent-rgb), .18); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none }
+/* floating glass: tab bar, toast */
+:root[data-theme="dark"] .lg { background: var(--glow), var(--float-a); -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8);
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .16), inset 0 1px 0 rgba(255, 255, 255, .08), var(--shadow) }
+:root[data-theme="dark"] .tabbar .seg-ind { background: rgba(255, 255, 255, .12); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .14) }
+:root[data-theme="dark"] .tabbar > button:not([aria-selected="true"]) { color: #FFFFFF }
+/* segmented controls and search fields are flat system fills, like UIKit */
+:root[data-theme="dark"] .seg:not(.tabbar), :root[data-theme="dark"] .search { background: rgba(118, 118, 128, .24); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none }
+:root[data-theme="dark"] .seg:not(.tabbar) .seg-ind { background: #636366; box-shadow: 0 3px 8px rgba(0, 0, 0, .12), 0 3px 1px rgba(0, 0, 0, .04) }
+:root[data-theme="dark"] .tag { color: var(--accent-ink); background: rgba(var(--accent-rgb), .16); box-shadow: none }
+:root[data-theme="dark"] .tag.neutral { color: var(--text-2); background: rgba(118, 118, 128, .24); box-shadow: none }
+:root[data-theme="dark"] .tag.good { background: rgba(48, 209, 88, .16); box-shadow: none }
+:root[data-theme="dark"] .tag.bad { background: rgba(255, 69, 58, .16); box-shadow: none }
+:root[data-theme="dark"] .tag.warn { background: rgba(255, 214, 10, .14); box-shadow: none }
+:root[data-theme="dark"] .hero h1 span { color: var(--text-3) }
+:root[data-theme="dark"] .rank { color: var(--text-3) }
 :root[data-theme="dark"] .rank.gold { color: var(--accent-ink) }
-:root[data-theme="dark"] .callout { background: linear-gradient(180deg, rgba(var(--accent-rgb), .16), rgba(var(--accent-rgb), .08)); box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), .5), inset 0 1px 0 rgba(255, 255, 255, .18) }
-:root[data-theme="dark"] .callout.bad { background: linear-gradient(180deg, rgba(255, 138, 138, .14), rgba(255, 138, 138, .06)); box-shadow: inset 0 0 0 1px rgba(255, 138, 138, .45), inset 0 1px 0 rgba(255, 255, 255, .15) }
-:root[data-theme="dark"] .sheet { -webkit-backdrop-filter: blur(30px) saturate(1.3); backdrop-filter: blur(30px) saturate(1.3); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 0 0 1px rgba(255, 255, 255, .22), 0 -20px 50px -10px #000 }
-:root[data-theme="dark"] .sw { background: rgba(255, 255, 255, .18); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(255, 255, 255, .3) }
-:root[data-theme="dark"] .sw::after { background: #FFFFFF }
-:root[data-theme="dark"] .sw:checked { background: linear-gradient(180deg, #8AD4CD, #62B8B1); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45) }
+:root[data-theme="dark"] .callout { background: rgba(var(--accent-rgb), .12); box-shadow: none }
+:root[data-theme="dark"] .callout.bad { background: rgba(255, 69, 58, .14); box-shadow: none }
+:root[data-theme="dark"] .sheet { -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 -10px 40px rgba(0, 0, 0, .6) }
+:root[data-theme="dark"] .sw { background: rgba(120, 120, 128, .32); box-shadow: none }
+:root[data-theme="dark"] .sw::after { background: #FFFFFF; box-shadow: 0 3px 8px rgba(0, 0, 0, .15), 0 3px 1px rgba(0, 0, 0, .06) }
+:root[data-theme="dark"] .sw:checked { background: var(--accent); box-shadow: none }
 :root[data-theme="dark"] .dot, :root[data-theme="dark"] .tabbar .badge { background: var(--accent); color: var(--on-accent); box-shadow: none }
-:root[data-theme="dark"] .skeleton { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .08), transparent) rgba(255, 255, 255, .12); background-size: 200px 100% }
-:root[data-theme="dark"] .cmp tr.diff td { background: rgba(var(--accent-rgb), .1) }
-:root[data-theme="dark"] .bar { background: rgba(0, 0, 0, .45) }
-:root[data-theme="dark"] .brand img { filter: drop-shadow(0 4px 14px rgba(var(--accent-rgb), .35)) }
+:root[data-theme="dark"] .skeleton { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .05), transparent) #1C1C1E; background-size: 200px 100% }
+:root[data-theme="dark"] .cmp tr.diff td { background: rgba(var(--accent-rgb), .08) }
+:root[data-theme="dark"] .bar { background: rgba(118, 118, 128, .24) }
+:root[data-theme="dark"] .brand img { filter: none }
 
 @media (max-width: 380px) {
   .title, .hero h1 { font-size: 30px }

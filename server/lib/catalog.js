@@ -185,6 +185,6 @@ export function filterItems(items, f) {
 
 // Compact list item: the full card is fetched separately when opened.
 export function toListItem(s) {
-  const { bot_url, channel_url, support_contact, whitelist_note, trial_terms, rating_rank, description, ...rest } = s;
+  const { channel_url, support_contact, whitelist_note, trial_terms, rating_rank, description, ...rest } = s;
   return { ...rest, description: description.length > 140 ? description.slice(0, 137) + '…' : description };
 }

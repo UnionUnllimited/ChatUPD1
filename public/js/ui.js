@@ -296,7 +296,10 @@ export function vpnCardHTML(s, { fav = false, cmp = false } = {}) {
     <div class="badges">${topTag(s.top)}${keyBadges(s, s.top ? 3 : 4)}</div>
     <div class="vpn-foot">
       <div class="stack-sm price" style="gap:6px"><span class="price-line"><span class="from">от</span><b>${rub(s.min_monthly)}</b><small>/мес</small></span>${s.market ? `<span>${marketTag(s.market)}</span>` : ''}</div>
-      <button type="button" class="${cmp ? 'sel' : 'fill'} btn sm press cmp-btn" data-cmp="${s.id}" aria-pressed="${cmp}">${icon.compare(cmp)}${cmp ? 'В сравнении' : 'Сравнить'}</button>
+      <div class="vpn-actions">
+        <button type="button" class="${cmp ? 'sel' : 'fill'} circle press cmp-btn" data-cmp="${s.id}" aria-pressed="${cmp}" aria-label="${cmp ? 'Убрать из сравнения' : 'Сравнить'}">${icon.compare(cmp)}</button>
+        ${s.bot_url ? `<button type="button" class="go-bot btn sm press" data-go="${s.id}" data-url="${esc(s.bot_url)}">${icon.bot} В бот</button>` : ''}
+      </div>
     </div>
   </article>`;
 }

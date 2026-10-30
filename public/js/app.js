@@ -4,7 +4,7 @@ import { appUrl } from './api.js';
 import { store, subscribe, loadMe, toggleFavorite, toggleCompare } from './store.js';
 import home from './views/home.js';
 import catalog from './views/catalog.js';
-import service from './views/service.js';
+import service, { goToBot } from './views/service.js';
 import compare from './views/compare.js';
 import favorites from './views/favorites.js';
 import { profile, myReviews, history as historyView, notifySettings } from './views/profile.js';
@@ -152,6 +152,8 @@ document.addEventListener('click', (e) => {
   if (fav) { e.stopPropagation(); toggleFavorite(Number(fav.dataset.fav)); return; }
   const cmp = e.target.closest('[data-cmp]');
   if (cmp) { e.stopPropagation(); toggleCompare(Number(cmp.dataset.cmp)); return; }
+  const go = e.target.closest('[data-go]');
+  if (go) { e.stopPropagation(); goToBot({ id: Number(go.dataset.go), bot_url: go.dataset.url }, go.dataset.source || 'catalog'); return; }
   const nav = e.target.closest('[data-nav]');
   if (nav) {
     e.preventDefault();
@@ -192,7 +194,9 @@ subscribe((what) => {
       b.setAttribute('aria-pressed', on);
       b.classList.toggle('sel', on);
       b.classList.toggle('fill', !on);
-      b.innerHTML = `${icon.compare(on)}${on ? 'В сравнении' : 'Сравнить'}`;
+      // Icon-only on list cards, labelled on the service page.
+      b.innerHTML = b.classList.contains('circle') ? icon.compare(on) : `${icon.compare(on)}${on ? 'В сравнении' : 'Сравнить'}`;
+      b.setAttribute('aria-label', on ? 'Убрать из сравнения' : 'Сравнить');
     });
   }
 });

@@ -86,6 +86,8 @@ export default async function service(root, { params }) {
       <div class="card stat"><span class="k">Стран</span><span class="v">${countries.length}</span></div>
     </div>
 
+    <button type="button" class="cta-bot press" id="goBot">${icon.bot}<span>Перейти в бот<small>${esc(s.bot_url.replace('https://t.me/', '@').split('?')[0])} · оплата и подключение там</small></span></button>
+
     <div class="callout ${verified ? '' : 'bad'}" style="display:flex;gap:10px;align-items:flex-start">
       <span style="color:${verified ? 'var(--good)' : 'var(--text-3)'};margin-top:2px">${icon.shield}</span>
       <span class="grow">${verified
@@ -196,5 +198,6 @@ export default async function service(root, { params }) {
     goToBot(s, 'card');
     if (store.me && !canReview) { canReview = true; setTimeout(renderMine, 600); }
   };
-  setMain({ text: 'Перейти в бот', onClick: go });
+  $('#goBot', root).addEventListener('click', go);
+  setMain({ text: 'Перейти в бот', onClick: go, shine: true });
 }

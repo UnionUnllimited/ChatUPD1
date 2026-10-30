@@ -3,7 +3,6 @@ import { store, removeFromCompare, COMPARE_MAX } from '../store.js';
 import { haptic } from '../tg.js';
 import { $, esc, rub, fmt, icon, logoHTML, emptyHTML, ratingStr, dateShort, paymentsText, monthsWord } from '../ui.js';
 import { PROTOCOL, COUNTRY, PLATFORM, TARIFF_MONTHS, MARKET_LABELS } from '../dict.js';
-import { goToBot } from './service.js';
 
 const list = (arr, dict) => arr.map((v) => dict[v]?.name || v).sort().join(', ');
 
@@ -66,7 +65,7 @@ export default async function compare(root) {
           <tbody>
             ${shown.map((r) => `<tr class="${r.differs ? 'diff' : ''}"><th scope="row">${esc(r.label)}</th>${r.vals.map((v) =>
               `<td class="${r.target !== null && v === r.target ? 'best' : ''}">${esc(r.f(v))}</td>`).join('')}</tr>`).join('')}
-            <tr><th scope="row"></th>${items.map((s) => `<td><button type="button" class="lgb btn sm press" data-go="${s.id}">${icon.bot} В бот</button></td>`).join('')}</tr>
+            <tr><th scope="row"></th>${items.map((s) => `<td><button type="button" class="go-bot btn sm press" data-go="${s.id}" data-url="${esc(s.bot_url)}" data-source="compare">${icon.bot} В бот</button></td>`).join('')}</tr>
           </tbody>
         </table>
       </div>
@@ -79,7 +78,6 @@ export default async function compare(root) {
       removeFromCompare(Number(b.dataset.remove));
       draw();
     }));
-    root.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => goToBot(items.find((s) => s.id === Number(b.dataset.go)), 'compare')));
   };
   await draw();
 }
