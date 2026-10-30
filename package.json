@@ -7,7 +7,7 @@
   "engines": { "node": ">=22.13" },
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning server/index.js",
-    "dev": "ALLOW_DEV_AUTH=1 node --disable-warning=ExperimentalWarning --watch server/index.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch server/index.js --dev",
     "seed": "node --disable-warning=ExperimentalWarning seed/seed.js",
     "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
   }

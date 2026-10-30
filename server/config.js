@@ -34,7 +34,8 @@ export const config = {
   // initData older than this is rejected.
   initDataMaxAgeSec: Number(env.INIT_DATA_MAX_AGE || 86400),
   // Development only: accept "Authorization: dev <telegramId>" without a signature.
-  allowDevAuth: bool(env.ALLOW_DEV_AUTH),
+  // `npm run dev` passes --dev so this works the same on Windows, macOS and Linux.
+  allowDevAuth: bool(env.ALLOW_DEV_AUTH) || process.argv.includes('--dev'),
   // Monthly top is auto-published on the 1st at this hour (Moscow time) if no admin did it earlier.
   topAutoPublishHourMsk: Number(env.TOP_AUTOPUBLISH_HOUR_MSK || 12),
   schedulerEnabled: env.SCHEDULER !== '0'

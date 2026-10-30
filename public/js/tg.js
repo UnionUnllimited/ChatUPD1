@@ -69,9 +69,9 @@ export function setMain(cfg) {
   if (tg) {
     try {
       if (!cfg) { tg.MainButton.hideProgress(); tg.MainButton.hide(); return prev; }
-      const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-      const onAccent = getComputedStyle(document.documentElement).getPropertyValue('--on-accent').trim();
-      tg.MainButton.setParams({ text: cfg.text, color: accent, text_color: onAccent, is_active: !cfg.disabled, is_visible: true });
+      // The native button can't be translucent: it takes the glass tint colour, not a solid accent.
+      const css = getComputedStyle(document.documentElement);
+      tg.MainButton.setParams({ text: cfg.text, color: css.getPropertyValue('--main-bg').trim(), text_color: css.getPropertyValue('--main-text').trim(), is_active: !cfg.disabled, is_visible: true });
       cfg.progress ? tg.MainButton.showProgress(false) : tg.MainButton.hideProgress();
     } catch {}
     return prev;
