@@ -135,3 +135,15 @@ export function copyText(text) {
   if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text).then(() => true, () => false);
   return Promise.resolve(false);
 }
+
+// Telegram's chat picker; outside Telegram the system share sheet, then the clipboard.
+// Resolves to 'telegram' | 'system' | 'cancelled' | 'copied' | 'failed'.
+export async function shareLink(url, text) {
+  if (tg) {
+    try { tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`); return 'telegram'; } catch {}
+  }
+  if (navigator.share) {
+    try { await navigator.share({ text, url }); return 'system'; } catch (e) { if (e?.name === 'AbortError') return 'cancelled'; }
+  }
+  return (await copyText(url)) ? 'copied' : 'failed';
+}

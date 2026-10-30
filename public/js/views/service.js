@@ -1,6 +1,6 @@
-import { get, post, api, patch } from '../api.js';
+import { get, post, api, patch, appUrl } from '../api.js';
 import { store, trackView } from '../store.js';
-import { haptic, openLink, setMain, copyText } from '../tg.js';
+import { haptic, openLink, setMain, copyText, shareLink } from '../tg.js';
 import {
   $, $$, esc, rub, fmt, plural, icon, logoHTML, marketTag, topTag, ratingStr, dateLong, dateShort, stars,
   openSheet, closeSheet, sheetIsOpen, setSheetMain, toast, toastError, monthsWord, paymentsText,
@@ -125,6 +125,7 @@ export default async function service(root, { params }) {
         <div class="meta"><span><span class="star">★</span> ${ratingStr(s.rating)} · ${fmt(s.reviews)} ${plural(s.reviews, 'отзыв', 'отзыва', 'отзывов')}</span></div>
         <div class="badges" style="margin-top:8px">${topTag(s.top)}${marketTag(s.market)}</div>
       </div>
+      <button type="button" class="fill circle press" id="shareBtn" aria-label="Поделиться" style="align-self:flex-start">${icon.share}</button>
     </div>
 
     <div class="stats">
@@ -241,6 +242,14 @@ export default async function service(root, { params }) {
     goToBot(s, 'card');
     if (store.me && !canReview) { canReview = true; setTimeout(renderMine, 600); }
   };
+  $('#shareBtn', root).addEventListener('click', async () => {
+    haptic.impact('light');
+    const facts = [`от ${rub(s.min_monthly)}/мес`, s.rating ? `★ ${ratingStr(s.rating)}` : '', s.promo?.discount_percent ? `скидка −${s.promo.discount_percent}%` : ''].filter(Boolean);
+    const how = await shareLink(s.share_url || appUrl(`#/service/${id}`), `${s.name} в Линзе: ${facts.join(', ')}`);
+    if (how === 'copied') toast('Ссылка скопирована');
+    if (how === 'failed') toast('Не удалось поделиться');
+  });
+
   const cta = $('#goBot', root);
   cta.addEventListener('click', go);
   // One bot button on screen at a time: the bottom one shows up once the in-page one scrolls away.

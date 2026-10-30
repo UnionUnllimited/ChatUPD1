@@ -66,6 +66,8 @@ test('full path: apply -> approve -> submit card -> approve -> visible in catalo
   const cat = await call('/api/catalog');
   assert.equal(cat.body.items[0].name, 'Линзовый VPN');
   assert.equal(cat.body.items[0].min_monthly, 199);
+  // The card carries a deep link that opens it straight in the Mini App.
+  assert.match((await call(`/api/services/${sid}`)).body.share_url, new RegExp(`^https://t\\.me/\\w+/\\w+\\?startapp=s_${sid}$`));
   // Another user cannot edit someone else's card.
   assert.equal((await call(`/api/owner/services/${sid}/revisions`, { method: 'POST', auth: tma(8), body: {} })).status, 403);
   // Click logging unlocks reviews.
