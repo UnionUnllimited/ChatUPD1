@@ -1,6 +1,6 @@
 import { get, put, patch, post, del } from '../api.js';
 import { store, hasRole } from '../store.js';
-import { haptic, confirmDialog, requestWriteAccess, inTelegram } from '../tg.js';
+import { haptic, confirmDialog, requestWriteAccess, inTelegram, themePref, setThemePref } from '../tg.js';
 import { $, $$, esc, fmt, icon, logoHTML, emptyHTML, stars, dateShort, dateTime, segHTML, bindSeg, toast, toastError, plural } from '../ui.js';
 import { MODERATION_STATUS, NOTIFY_TYPES } from '../dict.js';
 import { topExplainer } from './home.js';
@@ -43,6 +43,11 @@ export async function profile(root) {
       </div>
       ${hasRole('admin') ? `<div class="card group">${row('/admin', '<b>Админка</b>', '<span class="tag">модерация</span>')}</div>` : ''}
       <section>
+        <p class="label">Оформление</p>
+        <div id="themeBox">${segHTML([{ id: 'auto', name: 'Авто' }, { id: 'light', name: 'Светлая' }, { id: 'dark', name: 'Тёмная' }], themePref())}</div>
+        <p class="note" style="margin-top:8px">«Авто» — как в Telegram.</p>
+      </section>
+      <section>
         <p class="label">Скоро в Линзе</p>
         <div class="card group">
           ${['Биржа рекламы в Telegram-каналах', 'Серверы и хостинг', 'Биржа работы: панели, боты, поддержка', 'Готовые решения и проекты'].map((t) =>
@@ -53,6 +58,7 @@ export async function profile(root) {
         <button type="button" class="row press" id="howTop"><span>Как устроен рейтинг</span>${icon.chev}</button>
       </div>`;
     $('#howTop', root).addEventListener('click', () => topExplainer());
+    bindSeg($('#themeBox .seg', root), (v) => setThemePref(v));
   };
 
   const draw = async (r) => {

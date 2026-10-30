@@ -7,25 +7,51 @@ const atLeast = (v) => Boolean(tg && tg.isVersionAtLeast && tg.isVersionAtLeast(
 export const startParam = tg?.initDataUnsafe?.start_param || new URLSearchParams(location.search).get('startapp') || null;
 export const tgUser = tg?.initDataUnsafe?.user || null;
 
-export function initTelegram(onTheme) {
-  if (!tg) return;
-  try {
-    tg.ready();
-    tg.expand();
-    if (atLeast('7.7')) tg.disableVerticalSwipes(); // sheets and horizontal lists need the gesture
-  } catch {}
-  const apply = () => {
-    document.documentElement.setAttribute('data-theme', tg.colorScheme === 'dark' ? 'dark' : 'light');
+/* ---------- Theme: follows Telegram unless the user picked one in the profile ---------- */
+const THEME_KEY = 'linza_theme';
+let onThemeChange = null;
+
+export function themePref() {
+  try { return localStorage.getItem(THEME_KEY) || 'auto'; } catch { return 'auto'; }
+}
+
+function resolvedTheme() {
+  const pref = themePref();
+  if (pref === 'light' || pref === 'dark') return pref;
+  if (tg) return tg.colorScheme === 'dark' ? 'dark' : 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+export function applyTheme() {
+  document.documentElement.setAttribute('data-theme', resolvedTheme());
+  if (tg) {
     const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
     try {
       tg.setHeaderColor(bg);
       tg.setBackgroundColor(bg);
       if (atLeast('7.10')) tg.setBottomBarColor(bg);
     } catch {}
-    onTheme?.();
-  };
-  apply();
-  tg.onEvent('themeChanged', apply);
+  }
+  if (mainCfg) setMain(mainCfg); // MainButton colours come from the theme
+  onThemeChange?.();
+}
+
+export function setThemePref(pref) {
+  try { pref === 'auto' ? localStorage.removeItem(THEME_KEY) : localStorage.setItem(THEME_KEY, pref); } catch {}
+  applyTheme();
+}
+
+export function initTelegram(onTheme) {
+  onThemeChange = onTheme;
+  if (tg) {
+    try {
+      tg.ready();
+      tg.expand();
+      if (atLeast('7.7')) tg.disableVerticalSwipes(); // sheets and horizontal lists need the gesture
+    } catch {}
+    tg.onEvent('themeChanged', applyTheme);
+  }
+  applyTheme();
 }
 
 export const haptic = {
