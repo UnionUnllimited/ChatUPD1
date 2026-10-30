@@ -11,6 +11,12 @@ function devUserId() {
 
 const authHeader = tg ? `tma ${tg.initData}` : `dev ${devUserId()}`;
 
+// The app may live at the domain root or under a path such as /linza/ (behind a shared proxy),
+// so server paths like "/api/..." and "/uploads/..." are resolved against the page's directory.
+const BASE = new URL('./', document.baseURI);
+export const appUrl = (path) => new URL(String(path).replace(/^\//, ''), BASE).toString();
+export const asset = (url) => (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') ? appUrl(url) : url);
+
 export class ApiError extends Error {
   constructor(status, message, code) { super(message); this.status = status; this.code = code; }
 }
@@ -18,7 +24,7 @@ export class ApiError extends Error {
 export async function api(path, { method = 'GET', body, keepalive = false } = {}) {
   let res;
   try {
-    res = await fetch(path, {
+    res = await fetch(appUrl(path), {
       method,
       keepalive,
       headers: { authorization: authHeader, ...(body !== undefined ? { 'content-type': 'application/json' } : {}) },

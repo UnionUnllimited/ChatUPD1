@@ -46,7 +46,7 @@ export default async function home(root, { navigate }) {
   const avatar = me?.photo_url ? `<img src="${esc(me.photo_url)}" alt="">` : `<b class="mono">${esc((me?.first_name || 'Я')[0])}</b>`;
   root.innerHTML = `
     <div class="topbar">
-      <span class="brand"><img src="/img/logo.svg" alt="">Линза</span>
+      <span class="brand"><img src="img/logo.svg" alt="">Линза</span>
       <button type="button" class="lgs avatar press" data-nav="/profile" aria-label="Профиль">${avatar}</button>
     </div>
     <section class="hero">

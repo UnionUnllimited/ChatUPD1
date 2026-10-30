@@ -1,4 +1,4 @@
-import { get, post, put } from '../api.js';
+import { get, post, put, asset } from '../api.js';
 import { hasRole } from '../store.js';
 import { haptic, setMain, mainProgress, openLink, confirmDialog } from '../tg.js';
 import {
@@ -91,7 +91,7 @@ const DICT_FOR = { protocols: PROTOCOL, countries: COUNTRY, platforms: PLATFORM,
 
 function fieldValue(k, v) {
   if (v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length)) return '<span class="muted">—</span>';
-  if (k === 'logo') return `<img src="${esc(v)}" alt="" style="width:48px;height:48px;border-radius:14px;object-fit:cover">`;
+  if (k === 'logo') return `<img src="${esc(asset(v))}" alt="" style="width:48px;height:48px;border-radius:14px;object-fit:cover">`;
   if (k === 'tariffs') return TARIFF_MONTHS.filter((m) => v[m]).map((m) => `${monthsWord(m)}: ${rub(v[m])}`).join('<br>') || '—';
   if (DICT_FOR[k]) return esc(v.map((x) => (k === 'countries' ? `${COUNTRY[x]?.flag || ''} ` : '') + (DICT_FOR[k][x]?.name || x)).join(', '));
   if (typeof v === 'boolean') return v ? 'Да' : 'Нет';
