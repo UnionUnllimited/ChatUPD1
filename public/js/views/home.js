@@ -43,7 +43,7 @@ function promoCardHTML(s) {
 
 export default async function home(root, { navigate }) {
   const me = store.me;
-  const avatar = me?.photo_url ? `<img src="${esc(me.photo_url)}" alt="">` : esc((me?.first_name || 'Я')[0]);
+  const avatar = me?.photo_url ? `<img src="${esc(me.photo_url)}" alt="">` : `<b class="mono">${esc((me?.first_name || 'Я')[0])}</b>`;
   root.innerHTML = `
     <div class="topbar">
       <span class="brand"><img src="/img/logo.svg" alt="">Линза</span>

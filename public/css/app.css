@@ -60,48 +60,50 @@
 }
 
 :root[data-theme="dark"] {
-  --bg: #0B0E13;
-  --text: #F2F4F7;
-  --text-2: #CDD2DA;
-  --text-3: #9EA5B0;
-  --sep: rgba(255, 255, 255, .1);
-  --accent: #2CD4C8;
-  --accent-rgb: 44, 212, 200;
-  --accent-ink: #A6F5EE;
-  --on-accent: #032A28;
-  --good: #5BD48A;
-  --bad: #FF7A86;
-  --warn: #F5B55A;
-  --star: #F7C948;
-  --chart: #2CD4C8;
+  /* Graphite: pure black canvas, charcoal tiles lit from above, chrome-white type.
+     Turquoise appears only on primary actions, selection and data. */
+  --bg: #000000;
+  --text: #F5F5F7;
+  --text-2: #D1D1D6;
+  --text-3: #98989F;
+  --sep: rgba(255, 255, 255, .09);
+  --accent: #6FCABD;
+  --accent-rgb: 111, 202, 189;
+  --accent-ink: #8FE3D6;
+  --on-accent: #062621;
+  --good: #7DD9A3;
+  --bad: #FF8A8A;
+  --warn: #F2C26B;
+  --star: #F2C94C;
+  --chart: #22A496;               /* validated: L 0.48–0.67 and >= 3:1 on graphite */
 
-  --float-a: rgba(70, 78, 94, .55);
-  --float-b: rgba(34, 39, 50, .4);
-  --card-a: rgba(44, 50, 62, .66);
-  --card-b: rgba(28, 32, 42, .56);
-  --thumb: rgba(110, 120, 140, .38);
+  --float-a: rgba(62, 62, 65, .88);
+  --float-b: rgba(26, 26, 28, .92);
+  --card-a: #252527;
+  --card-b: #141415;
+  --thumb: #3A3A3D;
   --tint: rgba(var(--accent-rgb), .18);
-  --tint-sel: rgba(var(--accent-rgb), .14);
-  --spec-1: rgba(255, 255, 255, .34);
-  --spec-2: rgba(255, 255, 255, .1);
-  --spec-3: rgba(255, 255, 255, .08);
-  --spec-4: rgba(255, 255, 255, .22);
-  --edge: rgba(255, 255, 255, .12);
-  --edge-soft: rgba(255, 255, 255, .06);
-  --inner-glow: rgba(255, 255, 255, .14);
-  --lens-shade: rgba(0, 0, 0, .35);
-  --hairline: rgba(255, 255, 255, .06);
-  --shadow: 0 14px 34px -12px rgba(0, 0, 0, .6);
-  --card-shadow: 0 0 0 .5px rgba(255, 255, 255, .05), 0 14px 32px -18px rgba(0, 0, 0, .7);
-  --well: rgba(118, 118, 128, .22);
-  --well-shadow: inset 0 1px 2px rgba(0, 0, 0, .25);
-  --overlay: rgba(0, 0, 0, .45);
-  --sheet-bg: rgba(22, 26, 33, .94);
-  --blob-1: rgba(20, 110, 105, .35);
-  --blob-2: rgba(50, 60, 120, .3);
-  --blob-3: rgba(110, 60, 70, .18);
-  --blob-4: rgba(20, 80, 110, .3);
-  --glow: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgba(255, 255, 255, calc(var(--g) * .18)), rgba(255, 255, 255, 0) 60%);
+  --tint-sel: rgba(var(--accent-rgb), .12);
+  --spec-1: rgba(255, 255, 255, .28);
+  --spec-2: rgba(255, 255, 255, .06);
+  --spec-3: rgba(255, 255, 255, .03);
+  --spec-4: rgba(255, 255, 255, .12);
+  --edge: rgba(255, 255, 255, .1);
+  --edge-soft: rgba(255, 255, 255, .05);
+  --inner-glow: rgba(255, 255, 255, .16);
+  --lens-shade: rgba(0, 0, 0, .5);
+  --hairline: rgba(255, 255, 255, .07);
+  --shadow: 0 16px 40px -14px rgba(0, 0, 0, .95);
+  --card-shadow: 0 0 0 1px rgba(255, 255, 255, .06), 0 18px 36px -18px rgba(0, 0, 0, .95);
+  --well: #0C0C0D;
+  --well-shadow: inset 0 1px 3px rgba(0, 0, 0, .85), inset 0 0 0 1px rgba(255, 255, 255, .07);
+  --overlay: rgba(0, 0, 0, .62);
+  --sheet-bg: linear-gradient(180deg, #2A2A2C 0%, #161617 120px, #0E0E0F 100%);
+  --blob-1: rgba(255, 255, 255, .06);
+  --blob-2: rgba(255, 255, 255, .03);
+  --blob-3: transparent;
+  --blob-4: transparent;
+  --glow: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgba(255, 255, 255, calc(var(--g) * .14)), rgba(255, 255, 255, 0) 60%);
 }
 
 @supports (transition-timing-function: linear(0, 1)) {
@@ -458,6 +460,72 @@ details > summary::-webkit-details-marker { display: none }
 /* toast */
 .toast { position: fixed; left: 50%; top: calc(12px + var(--safe-t) + env(safe-area-inset-top, 0px)); transform: translate(-50%, -200%) scale(.9); visibility: hidden; transition: transform .35s ease-in, visibility .35s; z-index: 60; border-radius: 999px; padding: 12px 20px; font-size: 14px; font-weight: 600; max-width: calc(100% - 32px); text-align: center }
 .toast.show { transform: translate(-50%, 0) scale(1); visibility: visible; transition: transform .6s var(--spring-bouncy), visibility 0s }
+
+/* ================= Dark: graphite materials =================
+   Like a monochrome widget home screen: charcoal tiles with a crisp top highlight,
+   chrome monograms and silver headlines; the turquoise pill is the only colour. */
+:root[data-theme="dark"] .card {
+  background: var(--glow), linear-gradient(165deg, #333336 0%, #212123 42%, #131314 100%);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .13), inset 0 -1px 0 rgba(0, 0, 0, .6), 0 0 0 1px rgba(255, 255, 255, .06), 0 18px 36px -18px #000;
+}
+:root[data-theme="dark"] .lg {
+  background: var(--glow), linear-gradient(180deg, var(--float-a), var(--float-b));
+  -webkit-backdrop-filter: blur(20px) saturate(1.3); backdrop-filter: blur(20px) saturate(1.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 0 0 1px rgba(255, 255, 255, .08), var(--shadow);
+}
+:root[data-theme="dark"] .fill {
+  background: var(--glow), linear-gradient(180deg, #48484B 0%, #29292B 100%);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 0 0 1px rgba(0, 0, 0, .7), 0 6px 14px -6px #000;
+}
+:root[data-theme="dark"] .lgs {
+  background: var(--glow), linear-gradient(160deg, #505053 0%, #2C2C2E 55%, #1B1B1C 100%);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 0 0 1px rgba(0, 0, 0, .7), 0 6px 14px -6px #000;
+}
+:root[data-theme="dark"] .lgb, :root[data-theme="dark"] .solid {
+  color: var(--on-accent);
+  background: var(--glow), linear-gradient(180deg, #8EDDD2 0%, #6FCABD 55%, #5CB7AA 100%);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 -1px 0 rgba(0, 0, 0, .2), 0 0 0 1px rgba(0, 0, 0, .6), 0 8px 22px -10px rgba(var(--accent-rgb), .55);
+}
+:root[data-theme="dark"] .sel {
+  color: var(--accent-ink);
+  background: var(--glow), linear-gradient(180deg, rgba(var(--accent-rgb), .24), rgba(var(--accent-rgb), .08));
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 0 0 1px rgba(var(--accent-rgb), .55), 0 6px 16px -8px rgba(var(--accent-rgb), .35);
+}
+:root[data-theme="dark"] .lgb::before, :root[data-theme="dark"] .solid::before { display: none }
+:root[data-theme="dark"] .tabbar > button:not([aria-selected="true"]) { color: #C7C7CC }
+:root[data-theme="dark"] .tag { color: var(--accent-ink); background: rgba(var(--accent-rgb), .13); box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), .34) }
+:root[data-theme="dark"] .tag.neutral { color: var(--text-2); background: linear-gradient(180deg, #38383B, #28282A); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 0 0 1px rgba(0, 0, 0, .55) }
+:root[data-theme="dark"] .tag.good { background: rgba(125, 217, 163, .12); box-shadow: inset 0 0 0 1px rgba(125, 217, 163, .3) }
+:root[data-theme="dark"] .tag.bad { background: rgba(255, 138, 138, .12); box-shadow: inset 0 0 0 1px rgba(255, 138, 138, .3) }
+:root[data-theme="dark"] .tag.warn { background: rgba(242, 194, 107, .12); box-shadow: inset 0 0 0 1px rgba(242, 194, 107, .3) }
+:root[data-theme="dark"] .hero {
+  background: radial-gradient(90% 70% at 12% 0%, rgba(255, 255, 255, .09), transparent 60%), linear-gradient(165deg, #2E2E31 0%, #18181A 55%, #0D0D0E 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 0 0 1px rgba(255, 255, 255, .06), 0 24px 48px -24px #000;
+}
+/* chrome type: silver gradients like metal widget faces */
+:root[data-theme="dark"] .hero h1 span,
+:root[data-theme="dark"] .title,
+:root[data-theme="dark"] .kpi .v,
+:root[data-theme="dark"] .tile .n,
+:root[data-theme="dark"] .mono {
+  background: linear-gradient(180deg, #FFFFFF 0%, #E3E3E8 40%, #8E8E93 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+:root[data-theme="dark"] .rank { color: #8E8E93 }
+:root[data-theme="dark"] .rank.gold { color: var(--accent-ink) }
+:root[data-theme="dark"] .callout { background: linear-gradient(165deg, rgba(var(--accent-rgb), .14), rgba(var(--accent-rgb), .04)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 0 0 1px rgba(var(--accent-rgb), .26) }
+:root[data-theme="dark"] .callout.bad { background: linear-gradient(165deg, rgba(255, 138, 138, .12), rgba(255, 138, 138, .03)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 0 0 1px rgba(255, 138, 138, .26) }
+:root[data-theme="dark"] .sheet { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 0 0 1px rgba(255, 255, 255, .06), 0 -20px 50px -10px #000 }
+:root[data-theme="dark"] .sw { background: #2C2C2E; box-shadow: inset 0 1px 3px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 255, 255, .06) }
+:root[data-theme="dark"] .sw:checked { background: linear-gradient(180deg, #8EDDD2, #5CB7AA) }
+:root[data-theme="dark"] .skeleton { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .06), transparent) #161617; background-size: 200px 100% }
+:root[data-theme="dark"] .cmp tr.diff td { background: rgba(var(--accent-rgb), .07) }
+:root[data-theme="dark"] .brand img { filter: drop-shadow(0 4px 14px rgba(var(--accent-rgb), .35)) }
 
 @media (max-width: 380px) {
   .title, .hero h1 { font-size: 30px }

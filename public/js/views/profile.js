@@ -21,7 +21,7 @@ export async function profile(root) {
   const me = store.me;
   if (!me) return needTelegram(root, 'Профиль');
   const name = [me.first_name, me.last_name].filter(Boolean).join(' ');
-  const avatar = me.photo_url ? `<img src="${esc(me.photo_url)}" alt="">` : esc((me.first_name || '?')[0]);
+  const avatar = me.photo_url ? `<img src="${esc(me.photo_url)}" alt="">` : `<b class="mono">${esc((me.first_name || '?')[0])}</b>`;
   const role = me.active_role === 'vpn_owner' ? 'vpn_owner' : 'client';
 
   root.innerHTML = `

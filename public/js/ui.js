@@ -233,7 +233,7 @@ export function renderList(container, html) {
 export function logoHTML(s, size = '') {
   const name = s.name || s.service_name || '?';
   const url = s.logo_url;
-  return `<span class="lgs logo ${size}" aria-hidden="true">${url ? `<img src="${esc(url)}" alt="" loading="lazy">` : esc(name.trim()[0] || '?')}</span>`;
+  return `<span class="lgs logo ${size}" aria-hidden="true">${url ? `<img src="${esc(url)}" alt="" loading="lazy">` : `<b class="mono">${esc(name.trim()[0] || '?')}</b>`}</span>`;
 }
 
 export const stars = (n) => `<span class="stars" aria-label="${n} из 5">${'★'.repeat(n)}<span class="no">${'★'.repeat(5 - n)}</span></span>`;
