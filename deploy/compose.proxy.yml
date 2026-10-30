@@ -1,0 +1,14 @@
+# Used when the server already runs Caddy on 443 (e.g. Remnawave): the app joins
+# that proxy's Docker network under the name "linza", and the installer adds a
+# site block "reverse_proxy linza:3000" to that proxy's Caddyfile.
+services:
+  app:
+    networks:
+      default:
+      proxy:
+        aliases: [linza]
+
+networks:
+  proxy:
+    name: ${PROXY_NETWORK:?set PROXY_NETWORK in .env}
+    external: true

@@ -13,8 +13,11 @@ services:
     volumes:
       - linza-data:/data
 
+  # Own HTTPS proxy, used when port 443 is free (COMPOSE_PROFILES=caddy in .env).
+  # If the server already runs Caddy on 443, deploy/compose.proxy.yml is used instead.
   caddy:
     image: caddy:2.8
+    profiles: ["caddy"]
     restart: unless-stopped
     depends_on: [app]
     ports:
