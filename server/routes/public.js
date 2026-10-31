@@ -3,6 +3,7 @@ import { latestTop, topFor, topArchive } from '../lib/top.js';
 import { canReview } from '../lib/moderation.js';
 import { serviceHealth } from '../lib/health.js';
 import { parseAnswers, pickServices } from '../lib/pick.js';
+import { radar, radarSummary } from '../lib/radar.js';
 import { notFound, intParam, badRequest } from '../lib/http.js';
 import { appLink } from '../config.js';
 import { isPeriod, now } from '../lib/time.js';
@@ -29,9 +30,12 @@ export function publicRoutes(r, { db }) {
       market_avg: snap.avg,
       total: snap.items.length,
       quick: { cheap: count((s) => s.market === 'below'), trial: count((s) => s.trial), card_ru: count((s) => s.payments.includes('card_ru')) },
-      sponsored: sponsored(db, 'home_banner')
+      sponsored: sponsored(db, 'home_banner'),
+      radar: radarSummary(db)
     };
   });
+
+  r.get('/api/radar', () => radar(db));
 
   r.get('/api/catalog', ({ query }) => {
     const snap = snapshot(db);

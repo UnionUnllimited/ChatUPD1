@@ -154,3 +154,12 @@ test('ad exchange over HTTP: a seller lists a channel, a VPN owner books it, con
   assert.ok(me.body.roles.includes('ad_seller'));
   assert.equal((await call('/api/me', { method: 'PATCH', auth: seller, body: { active_role: 'ad_seller' } })).status, 200);
 });
+
+test('radar is public and the home screen carries its summary', async () => {
+  const r = await call('/api/radar');
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.networks.map((n) => n.id), ['wifi', 'mts', 'beeline', 'megafon', 'tele2']);
+  assert.equal(r.body.trend.length, 12);
+  const home = await call('/api/home');
+  assert.equal(home.body.radar.networks.length, 5);
+});

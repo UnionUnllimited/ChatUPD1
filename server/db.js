@@ -435,7 +435,11 @@ export const DEFAULT_SETTINGS = {
     spike_votes: 10,          // anomaly: this many votes...
     spike_min: 5,             // ...within these minutes
     networks_h: 24,           // network breakdown period
-    networks_min_votes: 5     // shown once this many votes name a network
+    networks_min_votes: 5,    // shown once this many votes name a network
+    radar_window_min: 120,    // «Радар сбоев»: what counts as "now"
+    radar_min_votes: 2,       // a VPN shows up on a network from this many "down" votes naming it...
+    radar_min_weight: 1.5,    // ...with at least this total weight, outweighing "works" there
+    radar_operator: 3         // this many VPNs failing on one network looks like the operator, not the VPNs
   },
   // Ad exchange: CPM traffic light (₽ per 1000 views), complaints before a channel goes to review,
   // and when a buyer is asked for a review after the post date.

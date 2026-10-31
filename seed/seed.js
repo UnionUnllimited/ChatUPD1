@@ -299,6 +299,10 @@ db.run(`UPDATE users SET trust_score = 0.2 WHERE id IN (${lowTrust.join(',')})`)
 const lowSvc = svcByName(SERVICES[13][0]);
 lowTrust.slice(0, 5).forEach((uid, k) => vote(uid, lowSvc, 'down', ts0 - (50 - k * 9) * MIN, 'tele2'));
 recent(lowSvc, 'up', [[35, 'wifi'], [12, 'megafon']]);
+// Radar: a third VPN failing on МТС (too few votes for a status, enough for the radar — so МТС looks
+// like an operator problem) and VPNs that people on МТС say work.
+recent(svcByName(SERVICES[4][0]), 'down', [[40, 'mts'], [25, 'mts']]);
+for (const k of [1, 2, 9, 11]) recent(svcByName(SERVICES[k][0]), 'up', [[between(30, 400), 'mts'], [between(30, 600), 'mts'], [between(60, 700), 'wifi']]);
 // Recent "works" signals elsewhere, so cards show a fresh last-signal time.
 for (const s of published) if (![aurora, outageSvc.id, lowSvc].includes(s.id) && rnd() < 0.7) recent(s.id, 'up', [[between(20, 600), rnd() < 0.5 ? pick(NETS) : null]]);
 

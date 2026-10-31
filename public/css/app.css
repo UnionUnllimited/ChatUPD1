@@ -594,3 +594,14 @@ details > summary::-webkit-details-marker { display: none }
 .cal-d small { font-size: 10px; font-weight: 500; color: var(--text-3) }
 .cal-d.on { background: var(--accent); color: var(--on-accent, #fff) } .cal-d.on small { color: inherit; opacity: .8 }
 .price-in { width: 116px; text-align: right; flex-shrink: 0 }
+
+/* «Радар сбоев» */
+.rdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: var(--st-ok) }
+.rdot.warn { background: var(--st-issues) }
+.rdot.bad { background: var(--st-outage); animation: pulse 1.6s ease-in-out infinite }
+.radar-mini { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; width: 100%; text-align: left; color: inherit; border-radius: 22px }
+.radar-line { font-size: 15px; line-height: 1.35 }
+.radar-nets { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-2) }
+.radar-nets > span { display: inline-flex; align-items: center; gap: 6px }
+.radar-row[aria-selected="true"] { background: var(--tint-sel) }
+.radar-row .row-flex { gap: 10px }

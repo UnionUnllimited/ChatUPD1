@@ -6,6 +6,7 @@ import home from './views/home.js';
 import catalog from './views/catalog.js';
 import service, { goToBot } from './views/service.js';
 import pick from './views/pick.js';
+import radar from './views/radar.js';
 import { adsFeed, adChannel, adDeals, adDeal, adMy, adEditor } from './views/ads.js';
 import compare from './views/compare.js';
 import favorites from './views/favorites.js';
@@ -23,7 +24,7 @@ function toPanel(root, { path, query }) {
 
 const routes = [
   ['/', home], ['/catalog', catalog], ['/compare', compare], ['/favorites', favorites], ['/profile', profile],
-  ['/service/:id', service], ['/pick', pick], ['/top', topArchive], ['/top/:period', topArchive],
+  ['/service/:id', service], ['/pick', pick], ['/radar', radar], ['/top', topArchive], ['/top/:period', topArchive],
   ['/profile/reviews', myReviews], ['/profile/history', historyView], ['/profile/notify', notifySettings],
   ['/owner', ownerHome], ['/owner/apply', ownerApply], ['/owner/:id', ownerService],
   ['/ads', adsFeed], ['/ads/deals', adDeals], ['/ads/deals/:id', adDeal], ['/ads/my', adMy], ['/ads/my/new', adEditor], ['/ads/my/:id', adEditor], ['/ads/:id', adChannel],
@@ -42,7 +43,7 @@ function parseHash() {
 
 function tabFor(path) {
   if (ROOT_TABS.includes(path)) return path;
-  if (path.startsWith('/top')) return '/';
+  if (path.startsWith('/top') || path === '/radar') return '/';
   if (/^\/(profile|owner|admin|ads)/.test(path)) return '/profile';
   return store.lastTab;
 }
@@ -227,7 +228,7 @@ function routeFromStartParam(p) {
   if (p === 'ads_my') return '/ads/my';
   if (p === 'reviews') return '/profile/reviews';
   if (p === 'ads') return '/ads';
-  if (['owner', 'top', 'profile', 'admin', 'catalog', 'compare', 'favorites', 'pick'].includes(p)) return `/${p}`;
+  if (['owner', 'top', 'profile', 'admin', 'catalog', 'compare', 'favorites', 'pick', 'radar'].includes(p)) return `/${p}`;
   return null;
 }
 

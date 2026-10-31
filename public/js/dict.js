@@ -170,13 +170,20 @@ export const HEALTH = {
   outage: { name: 'Массовый сбой', short: 'Массовый сбой', tone: 'bad' }
 };
 
+// `at` — how the network reads in a sentence: «у МТС сообщают о сбоях…», «по Wi-Fi всё спокойно».
 export const NETWORKS = [
-  { id: 'wifi', name: 'Wi-Fi' },
-  { id: 'mts', name: 'МТС' },
-  { id: 'beeline', name: 'Билайн' },
-  { id: 'megafon', name: 'МегаФон' },
-  { id: 'tele2', name: 'Tele2' }
+  { id: 'wifi', name: 'Wi-Fi', at: 'по Wi-Fi' },
+  { id: 'mts', name: 'МТС', at: 'у МТС' },
+  { id: 'beeline', name: 'Билайн', at: 'у Билайна' },
+  { id: 'megafon', name: 'МегаФон', at: 'у МегаФона' },
+  { id: 'tele2', name: 'Tele2', at: 'у Tele2' }
 ];
+// Radar levels of a network: nothing, some VPNs, so many that it looks like the operator.
+export const RADAR_LEVEL = {
+  calm: { name: 'спокойно', tone: 'good' },
+  some: { name: 'есть сбои', tone: 'warn' },
+  operator: { name: 'похоже на оператора', tone: 'bad' }
+};
 export const NETWORK = byId(NETWORKS);
 
 // Admin settings for the health system: [key, label, min, max, step, group]. The server
@@ -204,5 +211,9 @@ export const STATUS_CONFIG_FIELDS = [
   ['spike_votes', 'Всплеск: голосов', 2, 1000, 1, 'Аномалии'],
   ['spike_min', 'Всплеск: за минут', 1, 120, 1, 'Аномалии'],
   ['networks_h', 'Разбивка по сетям за, ч', 1, 168, 1, 'Отображение'],
-  ['networks_min_votes', 'Показывать разбивку от, голосов с сетью', 1, 100, 1, 'Отображение']
+  ['networks_min_votes', 'Показывать разбивку от, голосов с сетью', 1, 100, 1, 'Отображение'],
+  ['radar_window_min', 'Радар: окно «сейчас», мин', 15, 720, 5, 'Радар сбоев'],
+  ['radar_min_votes', 'Радар: VPN в списке сети от, голосов «не работает»', 1, 50, 1, 'Радар сбоев'],
+  ['radar_min_weight', 'Радар: и от суммарного веса', 0.1, 50, 0.1, 'Радар сбоев'],
+  ['radar_operator', 'Радар: «похоже на оператора» от, VPN со сбоями в сети', 2, 50, 1, 'Радар сбоев']
 ];

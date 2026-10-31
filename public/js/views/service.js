@@ -21,6 +21,7 @@ function renderStatus(box, h, verifiedAt, serviceId) {
     <span class="small muted">${failing && h.since ? `с ${timeMsk(h.since)} · ` : ''}${h.last_signal_at ? `последний сигнал ${ago(h.last_signal_at)}` : 'сигналов от клиентов пока нет'}</span>
     ${uptimeBarHTML(h.days, h.uptime30)}
     ${nets.length ? `<span class="small">Чаще сообщают: ${nets.map((n) => `${esc(NETWORK[n.network]?.name || n.network)} — ${n.down}`).join(', ')}</span>` : ''}
+    ${failing ? '<button type="button" class="link-btn press" data-nav="/radar" style="align-self:flex-start;padding:0">Радар сбоев: что работает в вашей сети →</button>' : ''}
     <div class="vote-row">
       <button type="button" class="${mine?.value === 'up' ? 'sel' : 'fill'} btn press" data-vote="up" aria-pressed="${mine?.value === 'up'}">Работает у меня</button>
       <button type="button" class="${mine?.value === 'down' ? 'sel' : 'fill'} btn press" data-vote="down" aria-pressed="${mine?.value === 'down'}">Не работает у меня</button>

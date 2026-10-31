@@ -2,6 +2,7 @@ import { get } from '../api.js';
 import { store, trackImpressions } from '../store.js';
 import { $, esc, rub, fmt, plural, icon, logoHTML, skeletonHTML, dateShort, openSheet, applyLens, ratingStr, marketTag, avatarHTML } from '../ui.js';
 import { monthLabel } from '../dict.js';
+import { radarMiniHTML } from './radar.js';
 
 export function topExplainer(weights = { rating: 0.4, clients: 0.3, stability: 0.3 }) {
   const pct = (v) => Math.round(v * 100) + '%';
@@ -59,6 +60,7 @@ export default async function home(root, { navigate }) {
       <button type="button" class="lgb btn press pick-entry" data-nav="/pick">Подобрать VPN за 30 секунд</button>
     </section>
     <div class="chips scroll" id="quick" style="margin-top:-12px"></div>
+    <div id="radarSec"></div>
     <section id="topSec">${skeletonHTML(1)}</section>
     <section id="promoSec"></section>
     <p class="note center">Рейтинг строится по отзывам, переходам и стабильности по сигналам клиентов. Платные места всегда отмечены «Реклама» и не влияют на него.</p>`;
@@ -78,6 +80,7 @@ export default async function home(root, { navigate }) {
     ['Оплата картой РФ', 'payments=card_ru', data.quick.card_ru]
   ].map(([label, q, n]) => `<button type="button" class="fill chip press" data-nav="/catalog?${q}">${label} <span class="n">${n}</span></button>`).join('');
 
+  $('#radarSec', root).innerHTML = radarMiniHTML(data.radar);
   const top = data.top;
   $('#topSec', root).innerHTML = top ? `
     <div class="sec-head">
