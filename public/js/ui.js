@@ -328,7 +328,7 @@ export function keyBadges(s, limit = 4) {
   if (s.payments.includes('card_ru')) out.push('<span class="tag neutral">Карта РФ</span>');
   else if (s.payments.includes('sbp')) out.push('<span class="tag neutral">СБП</span>');
   if (s.whitelist_bypass) out.push('<span class="tag neutral">Обход белых списков</span>');
-  if (out.length < 4) out.push(`<span class="tag neutral">до ${s.devices} ${plural(s.devices, 'устройства', 'устройств', 'устройств')}</span>`);
+  if (out.length < 4 && s.devices) out.push(`<span class="tag neutral">до ${s.devices} ${plural(s.devices, 'устройства', 'устройств', 'устройств')}</span>`);
   if (out.length < 4 && s.protocols[0]) out.push(`<span class="tag neutral">${esc(PROTOCOL[s.protocols[0]]?.name || s.protocols[0])}</span>`);
   return out.slice(0, limit).join('');
 }
@@ -349,7 +349,9 @@ export function vpnCardHTML(s, { fav = false, cmp = false, why = '' } = {}) {
     </div>
     ${why ? `<p class="why">${esc(why)}</p>` : `<div class="badges">${topTag(s.top)}${keyBadges(s, s.top ? 2 : 3)}</div>`}
     <div class="vpn-foot">
-      <div class="stack-sm price" style="gap:6px"><span class="price-line"><span class="from">от</span><b>${rub(s.min_monthly)}</b><small>/мес</small></span>${s.market === 'below' ? `<span>${marketTag(s.market)}</span>` : ''}</div>
+      <div class="stack-sm price" style="gap:6px">${s.min_monthly
+        ? `<span class="price-line"><span class="from">от</span><b>${rub(s.min_monthly)}</b><small>/мес</small></span>`
+        : '<span class="price-line"><span class="muted" style="font-size:15px">Цена уточняется</span></span>'}${s.market === 'below' ? `<span>${marketTag(s.market)}</span>` : ''}</div>
       <div class="vpn-actions">
         <button type="button" class="${cmp ? 'sel' : 'fill'} circle press cmp-btn" data-cmp="${s.id}" aria-pressed="${cmp}" aria-label="${cmp ? 'Убрать из сравнения' : 'Сравнить'}">${icon.compare(cmp)}</button>
         ${s.bot_url ? `<button type="button" class="go-bot btn sm press" data-go="${s.id}" data-url="${esc(s.bot_url)}">${icon.bot} В бот</button>` : ''}

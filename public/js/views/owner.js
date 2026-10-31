@@ -180,7 +180,7 @@ export function editorHTML(d) {
         <p class="note" style="margin-top:8px">Пустое поле — тарифа нет. Цена «от … ₽/мес» и метка относительно рынка считаются автоматически.</p>
       </section>
 
-      <label class="field"><span>Устройств на одну подписку</span><input class="input" type="number" inputmode="numeric" min="1" max="100" name="devices" value="${d.devices || 1}"></label>
+      <label class="field"><span>Устройств на одну подписку</span><input class="input" type="number" inputmode="numeric" min="1" max="100" name="devices" value="${d.devices ?? ''}" placeholder="—"></label>
       <section><p class="label">Протоколы</p>${chipsField('protocols', PROTOCOLS, d.protocols || [])}</section>
       <section><p class="label">Страны серверов</p>${chipsField('countries', COUNTRIES, d.countries || [], true)}</section>
       <section><p class="label">Платформы</p>${chipsField('platforms', PLATFORMS, d.platforms || [])}</section>
@@ -244,7 +244,7 @@ export function bindEditor(root, draft, onSubmit) {
       name: el.name.value, description: el.description.value, logo,
       bot_url: el.bot_url.value, channel_url: el.channel_url.value, support_contact: el.support_contact.value,
       tariffs: Object.fromEntries(TARIFF_MONTHS.map((m) => [m, $(`[data-tariff="${m}"]`, form).value ? Number($(`[data-tariff="${m}"]`, form).value) : null])),
-      devices: Number(el.devices.value),
+      devices: el.devices.value === '' ? null : Number(el.devices.value),
       ...lists,
       whitelist_bypass: el.whitelist_bypass.checked, whitelist_note: el.whitelist_note.value,
       trial: el.trial.checked, trial_days: el.trial_days.value ? Number(el.trial_days.value) : null, trial_terms: el.trial_terms.value

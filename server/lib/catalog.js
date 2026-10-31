@@ -114,7 +114,11 @@ function build(db) {
       health: health.get(r.id)?.status || 'operational',
       promo: promo ? { id: promo.id, title: promo.title, description: promo.description, discount_percent: promo.discount_percent, promo_code: promo.promo_code, ends_at: promo.ends_at } : null,
       top: tops.get(r.id) ? { period: tops.get(r.id).period, rank: tops.get(r.id).rank } : null,
-      devices: card.devices,
+      // Unknown parts of a card Линза added itself: null / empty here, «уточняется» on screen.
+      missing: r.missing ? JSON.parse(r.missing) : [],
+      devices: r.missing?.includes('"devices"') ? null : card.devices,
+      users_monthly: r.users_monthly,
+      site_url: r.site_url,
       protocols: card.protocols,
       countries: card.countries,
       platforms: card.platforms,
@@ -165,6 +169,8 @@ export function filterItems(items, f) {
   const q = f.q.toLocaleLowerCase('ru');
   const list = items.filter((s) => {
     if (q && !s.name.toLocaleLowerCase('ru').includes(q)) return false;
+    // A card without known prices doesn't match a price filter either way.
+    if ((f.priceMin !== null || f.priceMax !== null) && s.min_monthly == null) return false;
     if (f.priceMin !== null && s.min_monthly < f.priceMin) return false;
     if (f.priceMax !== null && s.min_monthly > f.priceMax) return false;
     if (f.trial && !s.trial) return false;
@@ -181,7 +187,7 @@ export function filterItems(items, f) {
     return true;
   });
   const sorters = {
-    price: (a, b) => a.min_monthly - b.min_monthly || b.rating_rank - a.rating_rank,
+    price: (a, b) => (a.min_monthly ?? Infinity) - (b.min_monthly ?? Infinity) || b.rating_rank - a.rating_rank || 0,
     rating: (a, b) => b.rating_rank - a.rating_rank || b.reviews - a.reviews,
     popular: (a, b) => b.popularity - a.popularity || b.rating_rank - a.rating_rank,
     new: (a, b) => b.published_at - a.published_at

@@ -37,7 +37,8 @@ export function editService(db, admin, id, card, { uploadsDir }) {
     // An admin edit of an unclaimed card is a fresh check of its data.
     if (!before.owner_id) db.run('UPDATE services SET data_checked_at = ? WHERE id = ?', now(), id);
     recomputeMarketAverage(db);
-    const changed = prev ? Object.keys(card).filter((k) => !eq(prev[k], card[k])) : Object.keys(card);
+    // `missing` is derived from the other fields, not something anyone changes.
+    const changed = (prev ? Object.keys(card).filter((k) => !eq(prev[k], card[k])) : Object.keys(card)).filter((k) => k !== 'missing');
     audit(db, admin.id, 'service.edit', 'service', id, { name: card.name, changed });
     if (before.owner_id) enqueue(db, before.owner_id, 'moderation', `✏️ Администратор обновил карточку «${html(card.name)}».`, `owner_${id}`);
     if (prev && before.min_monthly && min < before.min_monthly) {

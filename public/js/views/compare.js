@@ -8,7 +8,7 @@ const list = (arr, dict) => arr.map((v) => dict[v]?.name || v).sort().join(', ')
 
 // [label, value getter, formatter, best: 'min' | 'max' | undefined]
 const ROWS = [
-  ['Цена от, /мес', (s) => s.min_monthly, rub, 'min'],
+  ['Цена от, /мес', (s) => s.min_monthly, (v) => (v == null ? 'уточняется' : rub(v)), 'min'],
   ...TARIFF_MONTHS.map((m) => [`Тариф ${monthsWord(m)}`, (s) => s.tariffs[m] ?? null, (v) => (v == null ? '—' : rub(v)), 'min']),
   ['Относительно рынка', (s) => s.market, (v) => (v ? MARKET_LABELS[v] : '—')],
   ['Рейтинг', (s) => s.rating, ratingStr, 'max'],
@@ -16,12 +16,12 @@ const ROWS = [
   ['Статус по сигналам', (s) => s.health || 'operational', (v) => HEALTH[v]?.name || HEALTH.operational.name],
   ['Ручная проверка', (s) => s.verified_at, (v) => (v ? `✓ ${dateShort(v)}` : 'Не проверялся')],
   ['Пробный период', (s) => (s.trial ? s.trial_days || 'есть' : null), (v) => (v == null ? 'Нет' : typeof v === 'number' ? `${v} дн.` : 'Есть')],
-  ['Протоколы', (s) => list(s.protocols, PROTOCOL), (v) => v],
-  ['Стран', (s) => s.countries.length, (v) => v, 'max'],
-  ['Страны', (s) => s.countries.map((c) => COUNTRY[c]?.flag).join(' '), (v) => v],
-  ['Устройства', (s) => s.devices, (v) => `до ${v}`, 'max'],
-  ['Платформы', (s) => list(s.platforms, PLATFORM), (v) => v],
-  ['Оплата', (s) => paymentsText([...s.payments].sort()), (v) => v],
+  ['Протоколы', (s) => list(s.protocols, PROTOCOL), (v) => v || 'уточняется'],
+  ['Стран', (s) => s.countries.length, (v) => v || 'уточняется', 'max'],
+  ['Страны', (s) => s.countries.map((c) => COUNTRY[c]?.flag).join(' '), (v) => v || '—'],
+  ['Устройства', (s) => s.devices, (v) => (v == null ? 'уточняется' : `до ${v}`), 'max'],
+  ['Платформы', (s) => list(s.platforms, PLATFORM), (v) => v || 'уточняется'],
+  ['Оплата', (s) => paymentsText([...s.payments].sort()), (v) => v || 'уточняется'],
   ['Обход белых списков', (s) => s.whitelist_bypass, (v) => (v ? 'Да' : 'Нет')],
   ['Акция', (s) => (s.promo ? s.promo.title : null), (v) => v || '—']
 ];

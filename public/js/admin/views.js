@@ -7,7 +7,7 @@ import {
   healthTag, uptimeBarHTML, bindUptimeBar
 } from '../ui.js';
 import { store } from '../store.js';
-import { PROTOCOL, COUNTRY, PLATFORM, TARIFF_MONTHS, MODERATION_STATUS, NOTIFY_TYPES, NETWORK, STATUS_CONFIG_FIELDS, AD_TOPIC, AD_FORMAT, AD_COMPLAINT_REASONS, monthLabel } from '../dict.js';
+import { PROTOCOL, COUNTRY, PLATFORM, TARIFF_MONTHS, MODERATION_STATUS, NOTIFY_TYPES, NETWORK, STATUS_CONFIG_FIELDS, AD_TOPIC, AD_FORMAT, AD_COMPLAINT_REASONS, CARD_PARTS, monthLabel } from '../dict.js';
 import { editorHTML, bindEditor, barChart } from '../views/owner.js';
 
 /* ---------------- Shared bits ---------------- */
@@ -220,7 +220,7 @@ export async function services(root, { refresh }) {
     sort: { key: 'name', dir: 1 },
     columns: [
       { key: 'name', title: 'Сервис', render: (s) => `<span class="cell-main">${logoHTML(s, 'sm')}<span><b>${esc(s.name)}</b><small>${esc(s.bot_url.replace('https://t.me/', '@'))}</small></span></span>` },
-      { key: 'status', title: 'Статус', value: (s) => (s.hidden ? 2 : s.status === 'published' ? 0 : 1), render: serviceTags },
+      { key: 'status', title: 'Статус', value: (s) => (s.hidden ? 2 : s.status === 'published' ? 0 : 1), render: (s) => `${serviceTags(s)}${s.missing ? ` ${tag('неполная', 'warn')}` : ''}` },
       { key: 'owner_username', title: 'Владелец', value: (s) => (s.owner_id ? 2 : s.claim_status === 'pending' ? 1 : 0), render: ownerCell },
       { key: 'min_monthly', title: 'От ₽/мес', num: true, render: (s) => (s.min_monthly ? rub(s.min_monthly) : '—') },
       { key: 'rating', title: 'Рейтинг', num: true, render: (s) => (s.rating ? `★ ${String(s.rating).replace('.', ',')} <span class="muted">(${s.reviews})</span>` : '—') },
@@ -252,7 +252,7 @@ function cardKV(c) {
     ['Канал', c.channel_url ? `<a href="${esc(c.channel_url)}" target="_blank" rel="noopener">${esc(c.channel_url.replace('https://', ''))}</a>` : '—'],
     ['Поддержка', esc(c.support_contact || '—')],
     ['Тарифы', TARIFF_MONTHS.filter((m) => c.tariffs[m]).map((m) => `${monthsWord(m)} — ${rub(c.tariffs[m])}`).join('<br>') || '—'],
-    ['Устройства', `до ${c.devices}`],
+    ['Устройства', c.devices ? `до ${c.devices}` : 'уточняется'],
     ['Протоколы', list(c.protocols, PROTOCOL)],
     ['Страны', esc(c.countries.map((x) => `${COUNTRY[x]?.flag || ''} ${COUNTRY[x]?.name || x}`).join(', ') || '—')],
     ['Платформы', list(c.platforms, PLATFORM)],
@@ -348,7 +348,14 @@ export async function serviceDetail(root, { params, navigate, refresh }) {
           <button type="button" class="fill btn sm press danger" id="del" style="align-self:flex-start">Удалить навсегда</button>
         </div>
       </section>
-      <section><h2 class="section-title">Карточка</h2><div class="card panel">${cardKV(d.card)}</div></section>
+      <section><h2 class="section-title">Карточка</h2>
+        ${s.missing.length || s.admin_note || s.users_monthly || s.site_url ? `<div class="card panel stack-sm" style="margin-bottom:12px">
+          ${s.missing.length ? `<span>${tag('неполная', 'warn')} Уточняется: ${esc(s.missing.map((k) => CARD_PARTS[k]).join(', '))}</span>` : ''}
+          ${s.users_monthly ? `<span class="small">Пользователей бота в месяц: ${fmt(s.users_monthly)}</span>` : ''}
+          ${s.site_url ? `<span class="small">Сайт: <a href="${esc(s.site_url)}" target="_blank" rel="noopener">${esc(s.site_url)}</a></span>` : ''}
+          ${s.admin_note ? `<span class="small muted">Заметка: ${esc(s.admin_note)}</span>` : ''}
+        </div>` : ''}
+        <div class="card panel">${cardKV(d.card)}</div></section>
     </div>
     ${d.claims.length ? '<section><h2 class="section-title">Заявки на карточку</h2><div id="tClaims"></div></section>' : ''}
     <section><h2 class="section-title">Статус по сигналам клиентов</h2><div id="healthSec"></div></section>

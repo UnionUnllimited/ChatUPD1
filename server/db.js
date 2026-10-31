@@ -489,7 +489,13 @@ const COLUMNS = [
   ['services', 'claim_status', "TEXT NOT NULL DEFAULT 'claimed'",
     `UPDATE services SET claim_status = 'unclaimed' WHERE owner_id IS NULL;
      UPDATE users SET active_role = 'vpn_owner' WHERE active_role = 'client' AND id IN (SELECT owner_id FROM services WHERE owner_id IS NOT NULL)`],
-  ['services', 'data_checked_at', 'INTEGER', "UPDATE services SET data_checked_at = COALESCE(updated_at, created_at) WHERE added_by = 'admin'"]
+  ['services', 'data_checked_at', 'INTEGER', "UPDATE services SET data_checked_at = COALESCE(updated_at, created_at) WHERE added_by = 'admin'"],
+  // Imported cards: what Линза doesn't know yet (JSON list of card parts), the bot's monthly
+  // audience, the website, and a note only admins see.
+  ['services', 'missing', 'TEXT'],
+  ['services', 'users_monthly', 'INTEGER'],
+  ['services', 'site_url', 'TEXT'],
+  ['services', 'admin_note', 'TEXT']
 ];
 function migrate(raw) {
   for (const [table, column, ddl, backfill] of COLUMNS) {

@@ -113,17 +113,18 @@ function saveLogo(uploadsDir, serviceId, dataUrl) {
 export function applyCard(db, serviceId, card, { uploadsDir } = {}) {
   const ts = now();
   const { min, base } = monthlyOf(card.tariffs);
-  const logo = card.logo && uploadsDir ? saveLogo(uploadsDir, serviceId, card.logo) : card.logo && card.logo.startsWith('/uploads/') ? card.logo : null;
+  // An uploaded image (data URL) is saved to uploads; a stored path or a Telegram avatar is kept as is.
+  const logo = card.logo?.startsWith('data:') ? (uploadsDir ? saveLogo(uploadsDir, serviceId, card.logo) : null) : card.logo || null;
   db.run(
     `UPDATE services SET name = ?, description = ?, logo_url = ?, bot_url = ?, channel_url = ?, support_contact = ?,
        devices = ?, protocols = ?, countries = ?, platforms = ?, payments = ?, whitelist_bypass = ?, whitelist_note = ?,
-       trial = ?, trial_days = ?, trial_terms = ?, min_monthly = ?, base_monthly = ?, status = 'published',
+       trial = ?, trial_days = ?, trial_terms = ?, min_monthly = ?, base_monthly = ?, missing = ?, status = 'published',
        published_at = COALESCE(published_at, ?), updated_at = ?
      WHERE id = ?`,
     card.name, card.description || '', logo, card.bot_url, card.channel_url, card.support_contact,
     card.devices, JSON.stringify(card.protocols), JSON.stringify(card.countries), JSON.stringify(card.platforms),
     JSON.stringify(card.payments), card.whitelist_bypass, card.whitelist_note, card.trial, card.trial_days, card.trial_terms,
-    min, base, ts, ts, serviceId);
+    min, base, card.missing?.length ? JSON.stringify(card.missing) : null, ts, ts, serviceId);
   db.run('DELETE FROM tariffs WHERE service_id = ?', serviceId);
   for (const [m, p] of Object.entries(card.tariffs)) db.run('INSERT INTO tariffs (service_id, months, price) VALUES (?, ?, ?)', serviceId, Number(m), p);
   return { min, base, logo };
@@ -171,7 +172,7 @@ export function revisionDiff(db, rev) {
   const svc = db.get('SELECT * FROM services WHERE id = ?', rev.service_id);
   const after = JSON.parse(rev.data);
   const before = svc.status === 'published' ? rowToCard(svc, tariffsOf(db, svc.id)) : null;
-  const changed = before ? Object.keys(after).filter((k) => !eq(before[k], after[k])) : Object.keys(after);
+  const changed = (before ? Object.keys(after).filter((k) => !eq(before[k], after[k])) : Object.keys(after)).filter((k) => k !== 'missing');
   return { before, after, changed, is_new: !before };
 }
 

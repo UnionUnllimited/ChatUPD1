@@ -192,3 +192,48 @@ test('bot update: making the bot an admin of the card\'s channel settles the cla
   await bot.handleUpdate(db, { my_chat_member: { chat: { id: -1009, type: 'channel', username: 'veter_vpn', title: 'Ветер' }, from: { id: 90 }, new_chat_member: { status: 'administrator' } } });
   assert.equal(service().owner_id, 90);
 });
+
+test('import of the catalog file: partial cards, logos, audience, notes; the catalog handles unknown parts', async () => {
+  const { readFileSync, mkdtempSync, readdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { snapshot, filterItems, parseFilters } = await import('../server/lib/catalog.js');
+  const { pickServices, parseAnswers } = await import('../server/lib/pick.js');
+  const { copyLogos } = await import('../server/lib/importer.js');
+  const text = readFileSync(new URL('../seed/catalog/lens-2026-10-31.json', import.meta.url), 'utf8');
+  const r = importServices(db, admin, text, {});
+  assert.equal(r.created.length, 15);
+  assert.deepEqual(r.errors, []);
+  const happy = db.get("SELECT * FROM services WHERE name = 'Happy VPN'");
+  assert.deepEqual(JSON.parse(happy.missing), ['tariffs', 'devices', 'protocols', 'countries', 'payments']);
+  assert.equal(happy.logo_url, 'https://t.me/i/userpic/320/happyvpn.jpg');
+  assert.equal(happy.users_monthly, 496243);
+  assert.equal(happy.claim_status, 'unclaimed');
+  assert.equal(happy.trial_days, 3);
+  const nash = db.get("SELECT * FROM services WHERE name = 'NashVPN'");
+  assert.equal(nash.min_monthly, 224);
+  assert.ok(JSON.parse(nash.countries).includes('ie'));
+  assert.match(nash.admin_note, /1 Гбит/);
+  assert.equal(db.get("SELECT trial, trial_days FROM services WHERE name = 'VoxGate VPN'").trial, 1);
+  assert.equal(db.get("SELECT site_url FROM services WHERE name = 'VPNUS VPN'").site_url, 'https://dostup.cx');
+  assert.equal(db.get("SELECT missing FROM services WHERE name = 'Midas VPN'").missing, null);
+  // Catalog: unknown devices are null, unknown prices go last and never match a price filter or a budget.
+  invalidate();
+  const snap = snapshot(db);
+  assert.equal(snap.items.find((s) => s.name === 'Happy VPN').devices, null);
+  const byPrice = filterItems(snap.items, parseFilters({ sort: 'price' })).map((s) => s.min_monthly);
+  assert.ok(byPrice.indexOf(null) > byPrice.lastIndexOf(224));
+  assert.ok(filterItems(snap.items, parseFilters({ price_max: '300' })).every((s) => s.min_monthly !== null));
+  assert.ok(pickServices(snap.items, parseAnswers({ device: 'any', devices: '1', whitelist: 'no', payment: 'any', budget: '300' })).items.every((s) => s.min_monthly !== null));
+  // Telegram avatars are copied to uploads.
+  const dir = mkdtempSync(join(tmpdir(), 'linza-logos-'));
+  const fake = async () => ({ ok: true, headers: new Map([['content-type', 'image/jpeg']]), arrayBuffer: async () => new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3]).buffer });
+  assert.equal(await copyLogos(db, r.created.slice(0, 2), { uploadsDir: dir, load: fake }), 2);
+  assert.match(db.get("SELECT logo_url FROM services WHERE name = 'Happy VPN'").logo_url, /^\/uploads\/logo-\d+-[0-9a-f]{10}\.jpg$/);
+  assert.equal(readdirSync(dir).length, 2);
+});
+
+test('owners still fill in the whole card', () => {
+  assert.throws(() => validateCard({ name: 'Неполный', bot_url: '@half_vpn_bot', devices: 1, tariffs: {}, protocols: [], countries: [], platforms: [], payments: [] }), /тариф/);
+  assert.deepEqual(validateCard({ name: 'Неполный', bot_url: '@half_vpn_bot', tariffs: {} }, { partial: true }).missing, ['tariffs', 'devices', 'protocols', 'countries', 'platforms', 'payments']);
+});

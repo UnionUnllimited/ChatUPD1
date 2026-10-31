@@ -3,7 +3,7 @@ import { requireUser, requireRole, intParam, badRequest } from '../lib/http.js';
 import {
   previewLink, claimByLink, startClaim, claimView, checkCode, requestManual, decideClaim, createClaimLink, claimSuggestions
 } from '../lib/claims.js';
-import { importServices } from '../lib/importer.js';
+import { importServices, copyLogos } from '../lib/importer.js';
 import { mskDay, now, DAY } from '../lib/time.js';
 
 export function claimRoutes(r, { db, config }) {
@@ -55,5 +55,9 @@ export function claimRoutes(r, { db, config }) {
   r.post('/api/admin/services/:id/claim-link', (ctx) => createClaimLink(db, admin(ctx), intParam(ctx.params.id)));
   r.post('/api/admin/claims/:id/approve', (ctx) => decideClaim(db, admin(ctx), intParam(ctx.params.id), true, null, opts));
   r.post('/api/admin/claims/:id/reject', (ctx) => decideClaim(db, admin(ctx), intParam(ctx.params.id), false, ctx.body?.reason, opts));
-  r.post('/api/admin/services/import', (ctx) => importServices(db, admin(ctx), ctx.body?.text, { dryRun: Boolean(ctx.body?.dry_run), uploadsDir: config.uploadsDir }));
+  r.post('/api/admin/services/import', async (ctx) => {
+    const out = importServices(db, admin(ctx), ctx.body?.text, { dryRun: Boolean(ctx.body?.dry_run), uploadsDir: config.uploadsDir });
+    if (!out.dry_run) out.logos_copied = await copyLogos(db, out.created, { uploadsDir: config.uploadsDir });
+    return out;
+  });
 }

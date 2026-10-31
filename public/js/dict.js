@@ -24,9 +24,12 @@ export const COUNTRIES = [
   { id: 'se', name: 'Швеция', flag: '🇸🇪' },
   { id: 'ee', name: 'Эстония', flag: '🇪🇪' },
   { id: 'lv', name: 'Латвия', flag: '🇱🇻' },
+  { id: 'lt', name: 'Литва', flag: '🇱🇹' },
   { id: 'pl', name: 'Польша', flag: '🇵🇱' },
+  { id: 'ro', name: 'Румыния', flag: '🇷🇴' },
   { id: 'fr', name: 'Франция', flag: '🇫🇷' },
   { id: 'gb', name: 'Великобритания', flag: '🇬🇧' },
+  { id: 'ie', name: 'Ирландия', flag: '🇮🇪' },
   { id: 'ch', name: 'Швейцария', flag: '🇨🇭' },
   { id: 'us', name: 'США', flag: '🇺🇸' },
   { id: 'ca', name: 'Канада', flag: '🇨🇦' },
@@ -61,6 +64,8 @@ export const PAYMENTS = [
 ];
 
 export const DEVICE_OPTIONS = [1, 2, 3, 5, 10];
+// Parts of a card Линза may not know yet when it adds a service itself; the owner fills them in.
+export const CARD_PARTS = { tariffs: 'тарифы', devices: 'устройства', protocols: 'протоколы', countries: 'страны', platforms: 'платформы', payments: 'оплата' };
 
 /* ---------- Ad exchange ---------- */
 export const AD_TOPICS = [

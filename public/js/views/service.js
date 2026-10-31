@@ -63,6 +63,11 @@ export function goToBot(s, source = 'card') {
 }
 
 const yes = (v, a = 'Есть', b = 'Нет') => `<span class="${v ? 'ok' : 'no'}">${v ? a : b}</span>`;
+// Parts of a card Линза added itself that the owner hasn't filled in yet.
+const TBD = '<span class="muted">уточняется</span>';
+const orTBD = (text) => (text ? esc(text) : TBD);
+// 496243 → «496 тыс.», 1250000 → «1,3 млн».
+const usersText = (n) => (n >= 1e6 ? `${String(Math.round(n / 1e5) / 10).replace('.', ',')} млн` : n >= 1e3 ? `${Math.round(n / 1e3)} тыс.` : String(n));
 
 export function reviewSheet(service, existing, onSaved) {
   let rating = existing?.rating || 0;
@@ -128,15 +133,16 @@ export default async function service(root, { params }) {
         ${s.claim_status === 'claimed'
           ? `<span class="claim-line ok">${icon.shield} Подтверждено владельцем</span>`
           : s.added_by === 'admin' ? `<span class="claim-line"><span class="muted">Добавлено Линзой${s.data_checked_at ? ` · данные на ${dateShort(s.data_checked_at)}` : ''}</span>
+            ${s.missing?.length ? '<span class="muted">· часть данных уточняется</span>' : ''}
             <button type="button" class="link-btn press" data-nav="/claim?service=${s.id}">Это ваш VPN?</button></span>` : ''}
       </div>
       <button type="button" class="fill circle press" id="shareBtn" aria-label="Поделиться" style="align-self:flex-start">${icon.share}</button>
     </div>
 
     <div class="stats">
-      <div class="card stat"><span class="k">Цена</span><span class="v">от ${rub(s.min_monthly)}</span></div>
-      <div class="card stat"><span class="k">Устройств</span><span class="v">до ${s.devices}</span></div>
-      <div class="card stat"><span class="k">Стран</span><span class="v">${countries.length}</span></div>
+      <div class="card stat"><span class="k">Цена</span><span class="v">${s.min_monthly ? `от ${rub(s.min_monthly)}` : '—'}</span></div>
+      <div class="card stat"><span class="k">Устройств</span><span class="v">${s.devices ? `до ${s.devices}` : '—'}</span></div>
+      <div class="card stat"><span class="k">Стран</span><span class="v">${countries.length || '—'}</span></div>
     </div>
 
     <button type="button" class="cta-bot press" id="goBot">${icon.bot}<span>Перейти в бот</span></button>
@@ -153,8 +159,9 @@ export default async function service(root, { params }) {
 
     <section>
       <p class="label">Тарифы</p>
-      <div class="card group" role="radiogroup" aria-label="Тариф">${tariffRows(s, plans[0])}</div>
-      <p class="note" style="margin-top:8px">Оплата происходит в боте сервиса — Линза не берёт комиссию.</p>
+      ${plans.length ? `<div class="card group" role="radiogroup" aria-label="Тариф">${tariffRows(s, plans[0])}</div>
+      <p class="note" style="margin-top:8px">Оплата происходит в боте сервиса — Линза не берёт комиссию.</p>`
+        : '<p class="note" style="margin:0">Цены пока не указаны — актуальные тарифы в боте сервиса. Оплата там же, Линза не берёт комиссию.</p>'}
     </section>
 
     ${s.description ? `<section><p class="label">О сервисе</p><div class="card panel" style="font-size:15px;line-height:1.5;color:var(--text-2)">${esc(s.description)}</div></section>` : ''}
@@ -162,15 +169,17 @@ export default async function service(root, { params }) {
     <section>
       <p class="label">Параметры</p>
       <div class="card group">
-        <div class="row"><span>Протоколы</span><span class="v">${esc(s.protocols.map((p) => PROTOCOL[p]?.name || p).join(', '))}</span></div>
-        <div class="row" style="align-items:flex-start"><span>Страны</span><span class="v">${esc(countries.map((c) => c.name).join(', '))}</span></div>
-        <div class="row"><span>Устройства</span><span class="v">до ${s.devices}</span></div>
-        <div class="row"><span>Платформы</span><span class="v">${esc(s.platforms.map((p) => PLATFORM[p]?.name || p).join(', '))}</span></div>
-        <div class="row"><span>Оплата</span><span class="v">${esc(paymentsText(s.payments))}</span></div>
+        <div class="row"><span>Протоколы</span><span class="v">${orTBD(s.protocols.map((p) => PROTOCOL[p]?.name || p).join(', '))}</span></div>
+        <div class="row" style="align-items:flex-start"><span>Страны</span><span class="v">${orTBD(countries.map((c) => c.name).join(', '))}</span></div>
+        <div class="row"><span>Устройства</span><span class="v">${s.devices ? `до ${s.devices}` : TBD}</span></div>
+        <div class="row"><span>Платформы</span><span class="v">${orTBD(s.platforms.map((p) => PLATFORM[p]?.name || p).join(', '))}</span></div>
+        <div class="row"><span>Оплата</span><span class="v">${orTBD(paymentsText(s.payments))}</span></div>
         <div class="row" style="align-items:flex-start"><span>Обход белых списков</span><span class="v">${yes(s.whitelist_bypass, 'Да', 'Нет')}${s.whitelist_note ? `<br><span class="small">${esc(s.whitelist_note)}</span>` : ''}</span></div>
         <div class="row" style="align-items:flex-start"><span>Пробный период</span><span class="v">${s.trial ? `<span class="ok">${s.trial_days ? `${s.trial_days} ${plural(s.trial_days, 'день', 'дня', 'дней')}` : 'Есть'}</span>${s.trial_terms ? `<br><span class="small">${esc(s.trial_terms)}</span>` : ''}` : yes(false)}</span></div>
         ${s.channel_url ? `<button type="button" class="row" data-link="${esc(s.channel_url)}"><span>Канал</span><span class="v" style="color:var(--accent-ink)">${esc(s.channel_url.replace('https://', ''))}</span></button>` : ''}
         ${s.support_contact ? `<div class="row"><span>Поддержка</span><span class="v">${esc(s.support_contact)}</span></div>` : ''}
+        ${s.site_url ? `<button type="button" class="row" data-link="${esc(s.site_url)}"><span>Сайт</span><span class="v" style="color:var(--accent-ink)">${esc(s.site_url.replace(/^https?:\/\//, ''))}</span></button>` : ''}
+        ${s.users_monthly ? `<div class="row"><span>Пользователей бота в месяц</span><span class="v">≈ ${usersText(s.users_monthly)}</span></div>` : ''}
       </div>
     </section>
 
@@ -249,7 +258,7 @@ export default async function service(root, { params }) {
   };
   $('#shareBtn', root).addEventListener('click', async () => {
     haptic.impact('light');
-    const facts = [`от ${rub(s.min_monthly)}/мес`, s.rating ? `★ ${ratingStr(s.rating)}` : '', s.promo?.discount_percent ? `скидка −${s.promo.discount_percent}%` : ''].filter(Boolean);
+    const facts = [s.min_monthly ? `от ${rub(s.min_monthly)}/мес` : '', s.rating ? `★ ${ratingStr(s.rating)}` : '', s.promo?.discount_percent ? `скидка −${s.promo.discount_percent}%` : ''].filter(Boolean);
     const how = await shareLink(s.share_url || appUrl(`#/service/${id}`), `${s.name} в Линзе: ${facts.join(', ')}`);
     if (how === 'copied') toast('Ссылка скопирована');
     if (how === 'failed') toast('Не удалось поделиться');

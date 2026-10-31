@@ -1,5 +1,5 @@
 import { badRequest } from './http.js';
-import { PROTOCOL, COUNTRY, PLATFORM, PAYMENT, TARIFF_MONTHS } from '../../public/js/dict.js';
+import { PROTOCOL, COUNTRY, PLATFORM, PAYMENT, TARIFF_MONTHS, CARD_PARTS } from '../../public/js/dict.js';
 
 const str = (v, max, field, { required = false, min = 0 } = {}) => {
   const s = typeof v === 'string' ? v.trim() : v == null ? '' : String(v).trim();
@@ -43,19 +43,23 @@ export function normalizeContact(v) {
 
 const LOGO_DATA = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 const LOGO_PATH = /^\/uploads\/[a-z0-9-]+\.(png|jpg|webp)$/;
+// A Telegram avatar (imported cards keep it until the image is copied to uploads).
+export const LOGO_TG = /^https:\/\/t\.me\/i\/userpic\/\d{2,4}\/[A-Za-z0-9_]{3,64}\.(jpg|png)$/;
 const MAX_LOGO_BYTES = 400 * 1024;
 
-export function validateCard(input) {
+// Owners fill in the whole card. `partial` is for cards Линза adds itself: unknown parts may be
+// left empty and are listed in card.missing («уточняется» in the catalog) until the owner fills them.
+export function validateCard(input, { partial = false } = {}) {
   if (!input || typeof input !== 'object') throw badRequest('Пустая карточка');
   const tariffs = {};
   for (const m of TARIFF_MONTHS) {
     const p = int(input.tariffs?.[m], `Тариф на ${m} мес.`, 1, 1_000_000);
     if (p) tariffs[m] = p;
   }
-  if (!Object.keys(tariffs).length) throw badRequest('Укажите хотя бы один тариф');
+  if (!partial && !Object.keys(tariffs).length) throw badRequest('Укажите хотя бы один тариф');
 
   let logo = input.logo || null;
-  if (logo && !(LOGO_PATH.test(logo) || (LOGO_DATA.test(logo) && logo.length * 0.75 <= MAX_LOGO_BYTES))) {
+  if (logo && !(LOGO_PATH.test(logo) || LOGO_TG.test(logo) || (LOGO_DATA.test(logo) && logo.length * 0.75 <= MAX_LOGO_BYTES))) {
     throw badRequest('Логотип: PNG, JPEG или WebP до 400 КБ');
   }
 
@@ -68,7 +72,7 @@ export function validateCard(input) {
     channel_url: input.channel_url ? normalizeTelegramLink(input.channel_url, 'Ссылка на канал') : null,
     support_contact: str(input.support_contact, 120, 'Поддержка'),
     tariffs,
-    devices: int(input.devices, 'Число устройств', 1, 100, { required: true }),
+    devices: int(input.devices, 'Число устройств', 1, 100, { required: !partial }) ?? 1,
     protocols: enumList(input.protocols, PROTOCOL, 'Протоколы'),
     countries: enumList(input.countries, COUNTRY, 'Страны'),
     platforms: enumList(input.platforms, PLATFORM, 'Платформы'),
@@ -80,6 +84,9 @@ export function validateCard(input) {
     trial_terms: trial ? str(input.trial_terms, 300, 'Условия триала') : null
   };
   if (!card.bot_url) throw badRequest('Укажите ссылку на бот');
+  card.missing = partial ? Object.keys(CARD_PARTS).filter((k) => (k === 'tariffs' ? !Object.keys(tariffs).length
+    : k === 'devices' ? input.devices === null || input.devices === undefined || input.devices === '' : !card[k].length)) : [];
+  if (partial) return card;
   if (!card.protocols.length) throw badRequest('Выберите хотя бы один протокол');
   if (!card.countries.length) throw badRequest('Выберите хотя бы одну страну');
   if (!card.platforms.length) throw badRequest('Выберите хотя бы одну платформу');

@@ -1,0 +1,619 @@
+[
+  {
+    "name": "Happy VPN",
+    "description": "Быстрый VPN, более 2000 серверов в разных странах",
+    "bot_url": "https://t.me/happyvpn",
+    "channel_url": null,
+    "support_contact": "@duckvpns_support",
+    "devices": null,
+    "protocols": [],
+    "countries": [],
+    "platforms": [
+      "ios",
+      "android",
+      "windows",
+      "macos"
+    ],
+    "payments": [],
+    "whitelist_bypass": 0,
+    "whitelist_note": null,
+    "trial": 1,
+    "trial_days": 3,
+    "trial_terms": "3 дня бесплатно, без карты",
+    "tariffs": [],
+    "users_monthly": 496243,
+    "site": null,
+    "verified": false,
+    "added_by": "lens",
+    "checked_at": "2026-10-31",
+    "missing": [
+      "tariffs",
+      "devices",
+      "protocols",
+      "countries",
+      "payments"
+    ],
+    "notes": "",
+    "logo_url": "https://t.me/i/userpic/320/happyvpn.jpg"
+  },
+  {
+    "name": "VPNUS VPN",
+    "description": "VPN с личным кабинетом и собственными приложениями",
+    "bot_url": "https://t.me/vpnusvpn_bot",
+    "channel_url": "https://t.me/vpnus_vpn",
+    "support_contact": "@vpnus_support",
+    "devices": null,
+    "protocols": [
+      "hysteria2"
+    ],
+    "countries": [
+      "ee",
+      "fi",
+      "se",
+      "de",
+      "lv",
+      "lt"
+    ],
+    "platforms": [
+      "ios",
+      "android",
+      "macos",
+      "windows",
+      "router"
+    ],
+    "payments": [],
+    "whitelist_bypass": 1,
+    "whitelist_note": "Отдельные LTE-серверы для мобильного интернета",
+    "trial": 0,
+    "trial_days": null,
+    "trial_terms": null,
+    "tariffs": [],
+    "users_monthly": 406315,
+    "site": "https://dostup.cx",
+    "verified": false,
+    "added_by": "lens",
+    "checked_at": "2026-10-31",
+    "missing": [
+      "tariffs",
+      "devices",
+      "payments"
+    ],
+    "notes": "Устройства без лимита (добавляются автоматически). Литва добавлена в справочник стран. Бот верифицирован Major.",
+    "logo_url": "https://t.me/i/userpic/320/vpnusvpn_bot.jpg"
+  },
+  {
+    "name": "EJX VPNAI",
+    "description": "VPN со стабильной работой банков и госуслуг при включении",
+    "bot_url": "https://t.me/EJX_bot",
+    "channel_url": null,
+    "support_contact": "@EJXsupportbot",
+    "devices": null,
+    "protocols": [],
+    "countries": [],
+    "platforms": [],
+    "payments": [],
+    "whitelist_bypass": 0,
+    "whitelist_note": null,
+    "trial": 0,
+    "trial_days": null,
+    "trial_terms": null,
+    "tariffs": [],
+    "users_monthly": 293843,
+    "site": null,
+    "verified": false,
+    "added_by": "lens",
+    "checked_at": "2026-10-31",
+    "missing": [
+      "tariffs",
+      "devices",
+      "protocols",
+      "countries",
+      "payments",
+      "platforms"
+    ],
+    "notes": "Тарифы только в мини-приложении.",
+    "logo_url": "https://t.me/i/userpic/320/EJX_bot.jpg"
+  },
+  {
+    "name": "Alius VPN",
+    "description": "VPN без ограничений по устройствам",
+    "bot_url": "https://t.me/aliusvpn_bot",
+    "channel_url": "https://t.me/aliusvpnFAQ",
+    "support_contact": "@aliusvpnsupport",
+    "devices": null,
+    "protocols": [],
+    "countries": [],
+    "platforms": [],
+    "payments": [],
+    "whitelist_bypass": 0,
+    "whitelist_note": null,
+    "trial": 1,
+    "trial_days": 7,
+    "trial_terms": "7 дней, 120 ГБ, без ограничения устройств; включается автоматически при /start",
+    "tariffs": [],
+    "users_monthly": 151614,
+    "site": null,
+    "verified": false,
+    "added_by": "lens",
+    "checked_at": "2026-10-31",
+    "missing": [
+      "tariffs",
+      "devices",
+      "protocols",
+      "countries",
+      "payments",
+      "platforms"
+    ],
+    "notes": "Устройства без лимита.",
+    "logo_url": "https://t.me/i/userpic/320/aliusvpn_bot.jpg"
+  },
+  {
+    "name": "Appa VPN",
+    "description": "VPN с приятной ценой",
+    "bot_url": "https://t.me/appavpn",
+    "channel_url": null,
+    "support_contact": "@Appa_Support",
+    "devices": null,
+    "protocols": [],
+    "countries": [],
+    "platforms": [],
+    "payments": [],
+    "whitelist_bypass": 0,
+    "whitelist_note": null,
+    "trial": 1,
+    "trial_days": 2,
+    "trial_terms": "48 часов бесплатно",
+    "tariffs": [],
+    "users_monthly": 138518,
+    "site": null,
+    "verified": false,
+    "added_by": "lens",
+    "checked_at": "2026-10-31",
+    "missing": [
+      "tariffs",
+      "devices",
+      "protocols",
+      "countries",
+      "payments",
+      "platforms"
+    ],
+    "notes": "Юрлицо APPAPPA LTD. Тарифы только в мини-приложении.",
+    "logo_url": "https://t.me/i/userpic/320/appavpn.jpg"
+  },
+  {
+    "name": "VPN MIG",
+    "description": "VPN с локациями в Европе и Северной Америке",
+    "bot_url": "https://t.me/vpnmig_bot",
+    "channel_url": "https://t.me/vpn7mig",
+    "support_contact": "@help_vpnmig",
+    "devices": 3,
+    "protocols": [],
+    "countries": [
+      "ch",
+      "ca",
+      "gb"
+    ],
+    "platforms": [],
+    "payments": [],
+    "whitelist_bypass": 1,
+    "whitelist_note": "Обход (LTE) на всех мобильных операторах",
+    "trial": 0,
+    "trial_days": null,
+    "trial_terms": null,
+    "tariffs": [],
+    "users_monthly": 107627,
+    "site": "https://vmig.net",
+    "verified": false,
+    "added_by": "lens",
+    "checked_at": "2026-10-31",
+    "missing": [
+      "tariffs",
+      "protocols",
+      "payments",
+      "platforms"
+    ],
+    "notes": "Тарифы на 1 и 3 устройства. 12 локаций, названы только CH/CA/GB. Приложения Happ, INCY, v2rayTun.",
+    "logo_url": "https://t.me/i/userpic/320/vpnmig_bot.jpg"
+  },
+  {
+    "name": "NashVPN",
+    "description": "Быстрый и безопасный VPN, безлимитный трафик",
+    "bot_url": "https://t.me/nash_vpn_bot",
+    "channel_url": "https://t.me/nashvpnnews",
+    "support_contact": "чат бота @nash_vpn_bot",
+    "devices": null,
+    "protocols": [],
+    "countries": [
+      "de",
+      "nl",
+      "fr",
+      "ee",
+      "pl",
+      "us",
+      "kz",
+      "ru",
+      "ie",
+      "ro"
+    ],
+    "platforms": [],
+    "payments": [
+      "card_ru",
+      "card_foreign",
+      "crypto"
+    ],
+    "whitelist_bypass": 1,
+    "whitelist_note": "Локация «Белые списки»",
+    "trial": 0,
+    "trial_days": null,
+    "trial_terms": null,
+    "tariffs": [
+      {
+        "months": 1,
+        "price": 299
+      },
+      {
+        "months": 3,
+        "price": 790
+      },
+      {
+        "months": 6,
+        "price": 1390
+      },
+      {
+        "months": 12,
+        "price": 2690
+      }
+    ],
+    "users_monthly": 98121,
+    "site": null,
+    "verified": false,
+    "added_by": "lens",
+    "checked_at": "2026-10-31",
+    "missing": [
+      "devices",
+      "protocols",
+      "platforms"
+    ],
+    "notes": "Ирландия и Румыния добавлены в справочник стран (всего 10 стран). Каналы 1 Гбит/с.",
+    "logo_url": "https://t.me/i/userpic/320/nash_vpn_bot.jpg"
+  },
+  {
+    "name": "VPN RAKETA",
+    "description": "Быстрый и стабильный VPN, 4 года на рынке",
+    "bot_url": "https://t.me/VPN_Raketa_bot",
+    "channel_url": "https://t.me/VPN_RAKETA_FAQ",
+    "support_contact": "@VPN_RAKETA",
+    "devices": 2,
+    "protocols": [],
+    "countries": [],
+    "platforms": [
+      "ios",
+      "android",
+      "windows",
+      "macos",
+      "tv"
+    ],
+    "payments": [],
+    "whitelist_bypass": 1,
+    "whitelist_note": "Белый список 1–5 (LTE): МТС, Билайн, МегаФон, Tele2, Т-Мобайл",
+    "trial": 1,
+    "trial_days": 2,
+    "trial_terms": "2 дня для новых пользователей",
+    "tariffs": [
+      {
+        "months": 1,
+        "price": 300
+      },
+      {
+        "months": 3,
+        "price": 850
+      },
+      {
+        "months": 6,
+        "price": 1550
+      },
+      {
+        "months": 12,
+        "price": 2900
+      }
+    ],
+    "users_monthly": 94771,
+    "site": null,
+    "verified": false,
+    "added_by": "lens",
+    "checked_at": "2026-10-31",
+    "missing": [
+      "protocols",
+      "countries",
+      "payments"
+    ],
+    "notes": "10 стран (не названы). Трафик: 1000 ГБ/мес Wi-Fi, 100 ГБ/мес LTE. Без автосписаний.",
+    "logo_url": "https://t.me/i/userpic/320/VPN_Raketa_bot.jpg"
+  },
+  {
+    "name": "KotVPN",
+    "description": "Много локаций и обход глушилок",
+    "bot_url": "https://t.me/kotvpn_bot",
+    "channel_url": "https://t.me/news_kotvpn",
+    "support_contact": "@contest_vpn",
+    "devices": null,
+    "protocols": [],
+    "countries": [
+      "nl",
+      "fr",
+      "de"
+    ],
+    "platforms": [],
+    "payments": [],
+    "whitelist_bypass": 1,
+    "whitelist_note": "LTE-серверы",
+    "trial": 1,
+    "trial_days": 1,
+    "trial_terms": "24 часа",
+    "tariffs": [],
+    "users_monthly": 92248,
+    "site": "https://kotvpn.me",
+    "verified": false,
+    "added_by": "lens",
+    "checked_at": "2026-10-31",
+    "missing": [
+      "tariffs",
+      "devices",
+      "protocols",
+      "payments",
+      "platforms"
+    ],
+    "notes": "Бот требует подписку на канал. Контакт поддержки взят из поста канала — сверить. Бот верифицирован Major.",
+    "logo_url": "https://t.me/i/userpic/320/kotvpn_bot.jpg"
+  },
+  {
+    "name": "Молния VPN",
+    "description": "Премиум VPN: скорость, без рекламы, не садит батарею",
+    "bot_url": "https://t.me/molnia",
+    "channel_url": null,
+    "support_contact": "@molniyahelp",
+    "devices": null,
+    "protocols": [],
+    "countries": [],
+    "platforms": [
+      "ios",
+      "android",
+      "windows",
+      "macos",
+      "tv"
+    ],
+    "payments": [],
+    "whitelist_bypass": 0,
+    "whitelist_note": null,
+    "trial": 1,
+    "trial_days": 10,
+    "trial_terms": "10 дней бесплатно",
+    "tariffs": [
+      {
+        "months": 1,
+        "price": 199
+      },
+      {
+        "months": 3,
+        "price": 449
+      },
+      {
+        "months": 6,
+        "price": 849
+      },
+      {
+        "months": 12,
+        "price": 1549
+      }
+    ],
+    "users_monthly": 89939,
+    "site": null,
+    "verified": false,
+    "added_by": "lens",
+    "checked_at": "2026-10-31",
+    "missing": [
+      "devices",
+      "protocols",
+      "countries",
+      "payments"
+    ],
+    "notes": "Бот верифицирован Major.",
+    "logo_url": "https://t.me/i/userpic/320/molnia.jpg"
+  },
+  {
+    "name": "Surf VPN",
+    "description": "Безлимитный трафик, режим Smart, раздельное туннелирование",
+    "bot_url": "https://t.me/getSurfVpnBot",
+    "channel_url": null,
+    "support_contact": "@getSurfVPN_support",
+    "devices": null,
+    "protocols": [],
+    "countries": [],
+    "platforms": [
+      "ios",
+      "android",
+      "windows",
+      "macos",
+      "linux",
+      "tv"
+    ],
+    "payments": [
+      "card_ru",
+      "crypto"
+    ],
+    "whitelist_bypass": 0,
+    "whitelist_note": null,
+    "trial": 1,
+    "trial_days": 3,
+    "trial_terms": "3 дня за 1 ₽",
+    "tariffs": [],
+    "users_monthly": 83226,
+    "site": null,
+    "verified": false,
+    "added_by": "lens",
+    "checked_at": "2026-10-31",
+    "missing": [
+      "tariffs",
+      "devices",
+      "protocols",
+      "countries"
+    ],
+    "notes": "От 100 ₽/мес при оплате на 24 месяца. Гарантия возврата 30 дней.",
+    "logo_url": "https://t.me/i/userpic/320/getSurfVpnBot.jpg"
+  },
+  {
+    "name": "Midas VPN",
+    "description": "VLESS Reality, безлимитный трафик, 3 устройства",
+    "bot_url": "https://t.me/midas_vpn_bot",
+    "channel_url": "https://t.me/official_midas_vpn",
+    "support_contact": "@MidasVPN_support",
+    "devices": 3,
+    "protocols": [
+      "vless_reality"
+    ],
+    "countries": [
+      "de",
+      "nl",
+      "fi",
+      "pl"
+    ],
+    "platforms": [
+      "ios",
+      "android",
+      "windows",
+      "macos",
+      "linux",
+      "tv"
+    ],
+    "payments": [
+      "card_ru",
+      "sbp"
+    ],
+    "whitelist_bypass": 0,
+    "whitelist_note": null,
+    "trial": 0,
+    "trial_days": null,
+    "trial_terms": null,
+    "tariffs": [
+      {
+        "months": 1,
+        "price": 190
+      },
+      {
+        "months": 3,
+        "price": 570
+      },
+      {
+        "months": 6,
+        "price": 1040
+      }
+    ],
+    "users_monthly": 65076,
+    "site": "https://midasvpn.cc",
+    "verified": false,
+    "added_by": "lens",
+    "checked_at": "2026-10-31",
+    "missing": [],
+    "notes": "Тариф Full VPN; есть базовый тариф 100 ₽/мес. Сайт: 25+ стран. Без автосписаний. Цены с сайта.",
+    "logo_url": "https://t.me/i/userpic/320/midas_vpn_bot.jpg"
+  },
+  {
+    "name": "VoxGate VPN",
+    "description": "Стабильный VPN без логов",
+    "bot_url": "https://t.me/voxgate_bot",
+    "channel_url": null,
+    "support_contact": "@voxgate_support_bot",
+    "devices": null,
+    "protocols": [],
+    "countries": [],
+    "platforms": [],
+    "payments": [],
+    "whitelist_bypass": 0,
+    "whitelist_note": null,
+    "trial": 1,
+    "trial_days": null,
+    "trial_terms": "Есть тестовый период",
+    "tariffs": [],
+    "users_monthly": 56898,
+    "site": null,
+    "verified": false,
+    "added_by": "lens",
+    "checked_at": "2026-10-31",
+    "missing": [
+      "tariffs",
+      "devices",
+      "protocols",
+      "countries",
+      "payments",
+      "platforms"
+    ],
+    "notes": "Тарифы закрыты за принятием правил — правила не принимал. Возврата нет.",
+    "logo_url": "https://t.me/i/userpic/320/voxgate_bot.jpg"
+  },
+  {
+    "name": "VPN PPL",
+    "description": "Тарифы на 3, 5 или 10 устройств, VIP-серверы",
+    "bot_url": "https://t.me/vpnpplbot",
+    "channel_url": "https://t.me/vpnppl",
+    "support_contact": "@HelpVPNPPLBot",
+    "devices": 10,
+    "protocols": [],
+    "countries": [],
+    "platforms": [],
+    "payments": [],
+    "whitelist_bypass": 0,
+    "whitelist_note": null,
+    "trial": 0,
+    "trial_days": null,
+    "trial_terms": null,
+    "tariffs": [],
+    "users_monthly": 53690,
+    "site": null,
+    "verified": false,
+    "added_by": "lens",
+    "checked_at": "2026-10-31",
+    "missing": [
+      "tariffs",
+      "protocols",
+      "countries",
+      "payments",
+      "platforms"
+    ],
+    "notes": "Устройства: тарифы 3/5/10. Приложения Happ, INCY.",
+    "logo_url": "https://t.me/i/userpic/320/vpnpplbot.jpg"
+  },
+  {
+    "name": "YouVPN",
+    "description": "VLESS, безлимитный трафик, YouTube без рекламы",
+    "bot_url": "https://t.me/You_VPNBot",
+    "channel_url": "https://t.me/youvpn_feedback",
+    "support_contact": "https://youvpn.pro/support",
+    "devices": 5,
+    "protocols": [
+      "vless"
+    ],
+    "countries": [],
+    "platforms": [
+      "android"
+    ],
+    "payments": [],
+    "whitelist_bypass": 0,
+    "whitelist_note": null,
+    "trial": 1,
+    "trial_days": 1,
+    "trial_terms": "24 часа в боте (на сайте — 3 дня Премиум)",
+    "tariffs": [],
+    "users_monthly": 34798,
+    "site": "https://youvpn.pro",
+    "verified": false,
+    "added_by": "lens",
+    "checked_at": "2026-10-31",
+    "missing": [
+      "tariffs",
+      "countries",
+      "payments"
+    ],
+    "notes": "Сайт: Личный от 83 ₽/мес (1 устройство), Премиум от 108 ₽/мес (до 5). Остальные платформы «скоро».",
+    "logo_url": "https://t.me/i/userpic/320/You_VPNBot.jpg"
+  }
+]

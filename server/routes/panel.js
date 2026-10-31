@@ -109,7 +109,7 @@ export function panelRoutes(r, { db, config }) {
     return {
       items: db.all(
         `SELECT s.id, s.name, s.logo_url, s.status, s.hidden, s.hidden_reason, s.min_monthly, s.base_monthly, s.owner_id, s.published_at, s.updated_at, s.bot_url,
-           s.added_by, s.claim_status, s.data_checked_at,
+           s.added_by, s.claim_status, s.data_checked_at, s.missing, s.users_monthly,
            (SELECT COUNT(*) FROM service_claims c WHERE c.service_id = s.id AND c.status IN ('manual', 'dispute')) claims_waiting,
            u.username owner_username, u.first_name owner_name,
            (SELECT ROUND(AVG(rating), 1) FROM reviews r WHERE r.service_id = s.id AND r.status = 'approved') rating,
@@ -135,11 +135,13 @@ export function panelRoutes(r, { db, config }) {
     return {
       service: { id: s.id, name: s.name, status: s.status, hidden: Boolean(s.hidden), hidden_reason: s.hidden_reason, logo_url: s.logo_url,
         min_monthly: s.min_monthly, published_at: s.published_at, updated_at: s.updated_at, created_at: s.created_at,
-        added_by: s.added_by, claim_status: s.claim_status, data_checked_at: s.data_checked_at },
+        added_by: s.added_by, claim_status: s.claim_status, data_checked_at: s.data_checked_at,
+        missing: s.missing ? JSON.parse(s.missing) : [], users_monthly: s.users_monthly, site_url: s.site_url, admin_note: s.admin_note },
       claims: db.all(
         `SELECT c.id, c.status, c.method, c.note, c.created_at, c.decided_at, c.expires_at, c.user_id, u.username, u.first_name
          FROM service_claims c LEFT JOIN users u ON u.id = c.user_id WHERE c.service_id = ? AND c.status != 'superseded' ORDER BY c.id DESC LIMIT 20`, id),
-      card: rowToCard(s, tariffsOf(db, id)),
+      // Unknown devices stay unknown (the column itself defaults to 1).
+      card: { ...rowToCard(s, tariffsOf(db, id)), ...(s.missing?.includes('"devices"') ? { devices: null } : {}) },
       owner: s.owner_id ? db.get('SELECT id, username, first_name, last_name FROM users WHERE id = ?', s.owner_id) : null,
       daily,
       favorites: db.get('SELECT COUNT(*) n FROM favorites WHERE service_id = ?', id).n,
@@ -153,10 +155,11 @@ export function panelRoutes(r, { db, config }) {
 
   r.post('/api/admin/services', (ctx) => {
     const a = admin(ctx);
-    return { id: createService(db, a, validateCard(ctx.body), { uploadsDir: config.uploadsDir }) };
+    return { id: createService(db, a, validateCard(ctx.body, { partial: true }), { uploadsDir: config.uploadsDir }) };
   });
 
-  r.put('/api/admin/services/:id/card', (ctx) => editService(db, admin(ctx), intParam(ctx.params.id), validateCard(ctx.body), { uploadsDir: config.uploadsDir }));
+  // Admins may leave unknown parts empty (they show as «уточняется»); owners fill in the whole card.
+  r.put('/api/admin/services/:id/card', (ctx) => editService(db, admin(ctx), intParam(ctx.params.id), validateCard(ctx.body, { partial: true }), { uploadsDir: config.uploadsDir }));
 
   r.post('/api/admin/services/:id/owner', (ctx) => {
     const raw = ctx.body?.user_id;

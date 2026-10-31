@@ -28,7 +28,8 @@ export function ownerRoutes(r, { db, config }) {
   r.get('/api/owner/services/:id', (ctx) => {
     const u = requireRole(ctx, 'vpn_owner');
     const s = ownedService(db, u, intParam(ctx.params.id));
-    const published = s.status === 'published' ? rowToCard(s, tariffsOf(db, s.id)) : null;
+    // A card Линза added may not know the devices yet: the owner fills them in rather than inherit «1».
+    const published = s.status === 'published' ? { ...rowToCard(s, tariffsOf(db, s.id)), ...(s.missing?.includes('"devices"') ? { devices: null } : {}) } : null;
     const pending = db.get("SELECT data FROM service_revisions WHERE service_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1", s.id);
     // The editor starts from the newest version: pending > published > application skeleton.
     const draft = pending ? JSON.parse(pending.data) : published || { name: s.name, bot_url: s.bot_url, tariffs: {}, protocols: [], countries: [], platforms: [], payments: [], devices: 1 };

@@ -17,10 +17,10 @@ export function parseAnswers(query) {
 
 const REQUIREMENTS = {
   device: (s, a) => a.device === 'any' || s.platforms.includes(a.device),
-  devices: (s, a) => s.devices >= Number(a.devices),
+  devices: (s, a) => Number(a.devices) <= 1 || (s.devices ?? 0) >= Number(a.devices),
   whitelist: (s, a) => a.whitelist !== 'yes' || s.whitelist_bypass,
   payment: (s, a) => a.payment === 'any' || s.payments.includes(a.payment),
-  budget: (s, a) => a.budget === 'any' || s.min_monthly <= Number(a.budget)
+  budget: (s, a) => a.budget === 'any' || (s.min_monthly != null && s.min_monthly <= Number(a.budget))
 };
 // When nothing fits, the softer wishes give way first; device, white lists and payment never do.
 const RELAXABLE = ['budget', 'devices'];
@@ -41,7 +41,7 @@ function conditions(a, relaxed) {
 // What sets one result apart from the others.
 function extras(s, a) {
   const out = [];
-  if (Number(a.devices) > 1) out.push(`до ${s.devices} ${plural(s.devices, 'устройства', 'устройств', 'устройств')}`);
+  if (Number(a.devices) > 1 && s.devices) out.push(`до ${s.devices} ${plural(s.devices, 'устройства', 'устройств', 'устройств')}`);
   if (a.whitelist === 'unknown' && s.whitelist_bypass) out.push('обход белых списков');
   if (s.trial) out.push(s.trial_days ? `пробный период ${s.trial_days} ${plural(s.trial_days, 'день', 'дня', 'дней')}` : 'пробный период');
   if (s.promo) out.push(s.promo.discount_percent ? `скидка −${s.promo.discount_percent}%` : 'акция');
