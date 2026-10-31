@@ -124,6 +124,10 @@ function build(db) {
       trial: card.trial,
       trial_days: card.trial_days,
       trial_terms: card.trial_terms,
+      // «Добавлено Линзой · данные на <дата>» until the owner claims the card, then «Подтверждено владельцем».
+      added_by: r.added_by,
+      claim_status: r.claim_status,
+      data_checked_at: r.data_checked_at,
       published_at: r.published_at,
       updated_at: r.updated_at
     };

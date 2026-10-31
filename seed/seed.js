@@ -9,6 +9,7 @@ import { recomputeMarketAverage } from '../server/lib/catalog.js';
 import { publishTop } from '../server/lib/top.js';
 import { grantRole, loadUser } from '../server/auth.js';
 import { createChannel } from '../server/lib/ads.js';
+import { createClaimLink } from '../server/lib/claims.js';
 import { recordVote, recomputeStatus, evaluateTrust, openDispute } from '../server/lib/health.js';
 import { DAY, mskDay, now, periodOf, shiftPeriod, periodRange } from '../server/lib/time.js';
 
@@ -376,6 +377,17 @@ db.tx(() => {
     mine, DEV_ADMIN, b.owner_id, b.service_id, JSON.parse(db.get('SELECT free_dates FROM ad_channels WHERE id = ?', mine).free_dates)[0], 'Нужен пост про VPN для игр, креатив пришлём', ts0 - 3600_000, ts0 - 3600_000);
 });
 
+/* ---------------- Cards Линза added itself ---------------- */
+// Three services without an owner, as if the team had added them: «Гавань» lists the dev user's
+// @username as its contact (so the home screen hints «Похоже, это ваш VPN»), «Зенит» has an
+// official channel (the channel way of proving ownership), «Луч» gets a personal invitation link.
+const unclaimed = [[SERVICES[20][0], '@linza_admin', null], [SERVICES[21][0], '@zenit_vpn_team', 'https://t.me/linza_demo_zenit'], [SERVICES[22][0], '@luch_vpn_team', null]];
+for (const [name, contact, channel] of unclaimed) {
+  db.run("UPDATE services SET owner_id = NULL, added_by = 'admin', claim_status = 'unclaimed', data_checked_at = ?, support_contact = ?, channel_url = COALESCE(?, channel_url) WHERE name = ?",
+    ts0 - between(2, 12) * DAY, contact, channel, name);
+}
+const invite = createClaimLink(db, loadUser(db, DEV_ADMIN, config.adminIds), svcByName(SERVICES[22][0]));
+
 // Publish the two finished months so the home screen and the archive have data.
 for (const offset of [-2, -1]) publishTop(db, shiftPeriod(periodOf(ts0), offset), DEV_ADMIN);
 // Seeding must not spam: drop the outbox the publications produced, and mark the one-time
@@ -390,4 +402,5 @@ console.log(`Seeded ${n('SELECT COUNT(*) n FROM services')} services, ${n('SELEC
   `${n('SELECT COUNT(*) n FROM reviews')} reviews, ${n('SELECT COUNT(*) n FROM clicks')} clicks, ${n('SELECT COUNT(*) n FROM status_votes')} status votes, ` +
   `${n("SELECT COUNT(*) n FROM status_changes WHERE status != 'operational'")} incidents, ${n('SELECT COUNT(*) n FROM ad_channels')} ad channels, ${n('SELECT COUNT(*) n FROM ad_deals')} deals. Market average: ${db.setting('market_avg_monthly')} ₽/мес.`);
 console.log(`Demo admin / owner Telegram ID: ${DEV_ADMIN} (add it to ADMIN_IDS).`);
+console.log(`Owner invitation for «${SERVICES[22][0]}» (14 days): ${invite.link}\n  locally: http://localhost:3000/?startapp=claim_${invite.token}`);
 db.close();

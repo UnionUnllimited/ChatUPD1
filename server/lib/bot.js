@@ -4,6 +4,7 @@ import { appLink } from '../config.js';
 import { upsertUser, loadUser } from '../auth.js';
 import { createLoginToken } from './sessions.js';
 import { verifyChannel, unverifyChannel, setTelegramNumbers } from './ads.js';
+import { verifyByChannel } from './claims.js';
 
 // Thin Telegram Bot API client for the platform bot: notifications, /start, menu button.
 export function createBot(config, log = console) {
@@ -102,8 +103,11 @@ export function createBot(config, log = console) {
         if (['left', 'kicked', 'member', 'restricted'].includes(status)) unverifyChannel(db, m.chat.id);
         return;
       }
+      // The same act proves a VPN card's official channel (claims) and an ad listing (exchange).
+      const claimed = verifyByChannel(db, m.from.id, m.chat, { envAdmins: config.adminIds });
       const ch = verifyChannel(db, m.from.id, m.chat);
       const title = String(m.chat.title || '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+      if (!ch && claimed.length) return; // «Карточка теперь ваша» is already queued
       if (!ch) {
         await this.sendAppMessage(m.from.id, `Бот добавлен в «${title}», но такого канала нет среди ваших объявлений в Линзе. ` +
           'Добавьте канал в разделе «Реклама» (ссылка должна совпадать) и снова назначьте бота админом.', 'ads_my', 'Мои каналы').catch(() => {});
@@ -175,11 +179,18 @@ export function createBot(config, log = console) {
       const text = msg.text || '';
       if (text.startsWith('/start')) {
         const param = text.split(' ')[1] || null;
-        await this.sendAppMessage(msg.chat.id,
-          '<b>Линза</b> — честный каталог VPN.\n\n' +
-          'Сравнивайте цены, протоколы и проверки десятков сервисов, сохраняйте избранное и узнавайте о скидках первыми. ' +
-          'Рейтинг строится по отзывам, переходам и стабильности по сигналам клиентов — платные места никогда на него не влияют.',
-          param && /^[A-Za-z0-9_-]{1,64}$/.test(param) ? param : null, 'Открыть Линзу');
+        const keyboard = openButton('Открыть Линзу', param && /^[A-Za-z0-9_-]{1,64}$/.test(param) ? param : null);
+        // Owners get a straight way to their cabinet.
+        if (db.get('SELECT 1 FROM services WHERE owner_id = ? LIMIT 1', msg.from.id)) keyboard.inline_keyboard.push(openButton('Мой VPN в Линзе', 'owner').inline_keyboard[0]);
+        await api('sendMessage', {
+          chat_id: msg.chat.id,
+          parse_mode: 'HTML',
+          link_preview_options: { is_disabled: true },
+          text: '<b>Линза</b> — честный каталог VPN.\n\n' +
+            'Сравнивайте цены, протоколы и проверки десятков сервисов, сохраняйте избранное и узнавайте о скидках первыми. ' +
+            'Рейтинг строится по отзывам, переходам и стабильности по сигналам клиентов — платные места никогда на него не влияют.',
+          reply_markup: keyboard
+        });
         return;
       }
       if (text.startsWith('/admin')) {

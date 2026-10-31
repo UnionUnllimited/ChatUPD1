@@ -30,7 +30,8 @@ export function adminRoutes(r, { db, config }) {
       top_pending: !db.get('SELECT 1 FROM top_snapshots WHERE period = ?', previousPeriod()),
       incidents: n("SELECT COUNT(*) n FROM service_status WHERE status != 'operational'"),
       status_alerts: n("SELECT COUNT(*) n FROM status_disputes WHERE state = 'open'") + n("SELECT COUNT(*) n FROM status_anomalies WHERE state = 'open'"),
-      ads_review: n("SELECT COUNT(*) n FROM ad_channels WHERE status = 'review'")
+      ads_review: n("SELECT COUNT(*) n FROM ad_channels WHERE status = 'review'"),
+      claims: n("SELECT COUNT(*) n FROM service_claims WHERE status IN ('manual', 'dispute')")
     };
   });
 

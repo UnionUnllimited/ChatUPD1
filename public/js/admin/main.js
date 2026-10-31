@@ -12,7 +12,7 @@ const NAV = [
   { path: '/admin', name: 'Обзор', icon: I('<path d="M4 13h6V4H4zM14 20h6v-9h-6zM14 4v4h6V4zM4 20h6v-4H4z"/>') },
   { path: '/admin/applications', name: 'Заявки', count: 'applications', icon: I('<path d="M12 5v14M5 12h14"/>') },
   { path: '/admin/moderation', name: 'Модерация', count: 'moderation', icon: I('<path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z"/><path d="m9 12 2 2 4-4"/>') },
-  { path: '/admin/services', name: 'Сервисы', icon: I('<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>') },
+  { path: '/admin/services', name: 'Сервисы', count: 'claims', icon: I('<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>') },
   { path: '/admin/users', name: 'Пользователи', icon: I('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.4 3.3-5.3 6.5-5.3s5.7 1.9 6.5 5.3M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20c-.5-2.4-1.8-4-3.5-4.8"/>') },
   { path: '/admin/reviews', name: 'Отзывы', icon: I('<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>') },
   { path: '/admin/status', name: 'Статусы', count: 'status_alerts', icon: I('<path d="M3 12h4l3-7 4 14 3-7h4"/>') },
@@ -53,7 +53,7 @@ let seq = 0;
 async function refreshCounts() {
   try {
     const s = await get('/api/admin/summary');
-    const counts = { applications: s.applications, moderation: s.revisions + s.promos + s.reviews, unchecked: s.unchecked, status_alerts: s.status_alerts, ads_review: s.ads_review };
+    const counts = { applications: s.applications, moderation: s.revisions + s.promos + s.reviews, unchecked: s.unchecked, status_alerts: s.status_alerts, ads_review: s.ads_review, claims: s.claims };
     $$('#sideNav [data-count]').forEach((el) => {
       const n = counts[el.dataset.count] || 0;
       el.hidden = !n;

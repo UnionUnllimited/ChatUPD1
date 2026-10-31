@@ -4,6 +4,7 @@ import { flushOutbox } from './notify.js';
 import { recomputeActive, evaluateTrust } from './health.js';
 import { askReviews } from './ads.js';
 import { sendReminders } from './reminders.js';
+import { expireClaims } from './claims.js';
 import { previousPeriod, mskDate, mskHour } from './time.js';
 
 // The monthly top is recalculated on the 1st: admins can preview and publish it
@@ -34,6 +35,7 @@ export function startScheduler({ db, bot, config, log = console }) {
       expirePromos(db);
       askReviews(db);
       sendReminders(db, { botUsername: config.botUsername });
+      expireClaims(db);
       if (autoPublishTop(db, config.topAutoPublishHourMsk)) log.info('Monthly top auto-published for', previousPeriod());
     } catch (e) { log.error('scheduler:', e.message); }
   };

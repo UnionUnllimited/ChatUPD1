@@ -1,6 +1,6 @@
 import { get } from '../api.js';
 import { store, trackImpressions } from '../store.js';
-import { $, esc, rub, fmt, plural, icon, logoHTML, skeletonHTML, dateShort, openSheet, applyLens, ratingStr, marketTag, avatarHTML } from '../ui.js';
+import { $, esc, rub, fmt, plural, icon, logoHTML, skeletonHTML, dateShort, openSheet, applyLens, ratingStr, marketTag, avatarHTML, healthTag } from '../ui.js';
 import { monthLabel } from '../dict.js';
 import { radarMiniHTML } from './radar.js';
 
@@ -42,6 +42,36 @@ function promoCardHTML(s) {
     </button>`;
 }
 
+const HINTS_KEY = 'linza.claim_hints_dismissed';
+const dismissed = () => { try { return JSON.parse(localStorage.getItem(HINTS_KEY) || '[]'); } catch { return []; } };
+
+// An owner sees their VPN first: status, a week of numbers and the usual destinations.
+async function drawMine(box) {
+  const { services, suggestions } = await get('/api/me/services');
+  const s = services[0];
+  const hint = suggestions.find((x) => !dismissed().includes(x.id));
+  box.innerHTML = `${s ? `
+    <section class="card panel stack-sm my-vpn">
+      <div class="row-flex between"><span class="label" style="margin:0">Ваш VPN</span>${services.length > 1 ? `<button type="button" class="link-btn press" data-nav="/owner" style="min-height:32px;padding:0">Все · ${services.length}</button>` : ''}</div>
+      <button type="button" class="row-flex press tap" data-nav="/owner/${s.id}" style="text-align:left;gap:12px">${logoHTML(s)}
+        <span class="grow" style="display:flex;flex-direction:column;gap:4px"><b style="font-size:17px">${esc(s.name)}</b>
+          ${s.status === 'published' && !s.hidden ? healthTag(s.health, true) : `<span class="small muted">${s.hidden ? 'Скрыт администратором' : s.revision === 'pending' ? 'Карточка на модерации' : 'Черновик — заполните карточку'}</span>`}</span>${icon.chev}</button>
+      ${s.status === 'published' ? `<div class="my-stats"><span><b>${fmt(s.impressions7)}</b> ${plural(s.impressions7, 'показ', 'показа', 'показов')}</span><span><b>${fmt(s.clicks7)}</b> ${plural(s.clicks7, 'переход', 'перехода', 'переходов')} в бот</span><span class="muted">за 7 дней</span></div>` : ''}
+      <div class="my-actions">${[['Карточка', ''], ['Тарифы', '?focus=tariffs'], ['Акции', '?tab=promos'], ['Статистика', '?tab=stats']]
+        .map(([label, q]) => `<button type="button" class="fill btn sm press" data-nav="/owner/${s.id}${q}">${label}</button>`).join('')}</div>
+    </section>` : ''}
+    ${hint ? `
+    <div class="callout stack-sm claim-hint">
+      <span>Похоже, это ваш VPN <b>«${esc(hint.name)}»</b>. Подтвердить?</span>
+      <span class="row-flex" style="gap:8px"><button type="button" class="lgb btn sm press" data-nav="/claim?service=${hint.id}">Подтвердить</button>
+        <button type="button" class="link-btn press" data-hint-off="${hint.id}">Это не мой</button></span>
+    </div>` : ''}`;
+  box.querySelector('[data-hint-off]')?.addEventListener('click', (e) => {
+    try { localStorage.setItem(HINTS_KEY, JSON.stringify([...dismissed(), Number(e.currentTarget.dataset.hintOff)])); } catch {}
+    e.currentTarget.closest('.claim-hint').remove();
+  });
+}
+
 export default async function home(root, { navigate }) {
   const me = store.me;
   root.innerHTML = `
@@ -49,6 +79,7 @@ export default async function home(root, { navigate }) {
       <span class="brand"><img src="img/logo.svg" alt="">Линза</span>
       <button type="button" class="press" data-nav="/profile" aria-label="Профиль" style="border-radius:50%">${avatarHTML(me || { first_name: 'Я' })}</button>
     </div>
+    <div id="mineSec"></div>
     <section class="hero">
       <h1>Работающий VPN.<br><span>По честной цене.</span></h1>
       <p id="heroLead">Сравните цены, протоколы и проверки VPN-сервисов из Telegram в одном месте.</p>
@@ -72,6 +103,7 @@ export default async function home(root, { navigate }) {
     navigate(q ? `/catalog?q=${encodeURIComponent(q)}` : '/catalog');
   });
 
+  if (me) drawMine($('#mineSec', root)).catch(() => {});
   const data = await get('/api/home');
   $('#heroLead', root).textContent = `Сравните цены, протоколы и проверки ${data.total} ${plural(data.total, 'VPN-сервиса', 'VPN-сервисов', 'VPN-сервисов')} из Telegram. Рейтинг не продаётся.`;
   $('#quick', root).innerHTML = [

@@ -125,6 +125,10 @@ export default async function service(root, { params }) {
         <h1 class="vpn-name">${esc(s.name)}</h1>
         <div class="meta"><span><span class="star">★</span> ${ratingStr(s.rating)} · ${fmt(s.reviews)} ${plural(s.reviews, 'отзыв', 'отзыва', 'отзывов')}</span></div>
         <div class="badges" style="margin-top:8px">${topTag(s.top)}${marketTag(s.market)}</div>
+        ${s.claim_status === 'claimed'
+          ? `<span class="claim-line ok">${icon.shield} Подтверждено владельцем</span>`
+          : s.added_by === 'admin' ? `<span class="claim-line"><span class="muted">Добавлено Линзой${s.data_checked_at ? ` · данные на ${dateShort(s.data_checked_at)}` : ''}</span>
+            <button type="button" class="link-btn press" data-nav="/claim?service=${s.id}">Это ваш VPN?</button></span>` : ''}
       </div>
       <button type="button" class="fill circle press" id="shareBtn" aria-label="Поделиться" style="align-self:flex-start">${icon.share}</button>
     </div>

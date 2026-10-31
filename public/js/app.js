@@ -7,6 +7,7 @@ import catalog from './views/catalog.js';
 import service, { goToBot } from './views/service.js';
 import pick from './views/pick.js';
 import radar from './views/radar.js';
+import claim from './views/claim.js';
 import { adsFeed, adChannel, adDeals, adDeal, adMy, adEditor } from './views/ads.js';
 import compare from './views/compare.js';
 import favorites from './views/favorites.js';
@@ -24,11 +25,11 @@ function toPanel(root, { path, query }) {
 
 const routes = [
   ['/', home], ['/catalog', catalog], ['/compare', compare], ['/favorites', favorites], ['/profile', profile],
-  ['/service/:id', service], ['/pick', pick], ['/radar', radar], ['/top', topArchive], ['/top/:period', topArchive],
+  ['/service/:id', service], ['/pick', pick], ['/radar', radar], ['/claim', claim], ['/top', topArchive], ['/top/:period', topArchive],
   ['/profile/reviews', myReviews], ['/profile/history', historyView], ['/profile/notify', notifySettings],
   ['/owner', ownerHome], ['/owner/apply', ownerApply], ['/owner/:id', ownerService],
   ['/ads', adsFeed], ['/ads/deals', adDeals], ['/ads/deals/:id', adDeal], ['/ads/my', adMy], ['/ads/my/new', adEditor], ['/ads/my/:id', adEditor], ['/ads/:id', adChannel],
-  ['/admin', toPanel], ['/admin/:section', toPanel]
+  ['/admin', toPanel], ['/admin/:section', toPanel], ['/admin/:section/:id', toPanel]
 ].map(([pattern, view]) => {
   const keys = [];
   const re = new RegExp('^' + pattern.replace(/:(\w+)/g, (_, k) => { keys.push(k); return '([^/]+)'; }) + '$');
@@ -103,6 +104,8 @@ async function render(restoreScroll) {
 
   if (typeof cleanup === 'function') cleanup();
   cleanup = null;
+  // A sheet left open would restore the previous screen's main button when it closes.
+  if (sheetIsOpen()) closeSheet(true);
   setMain(null);
   const tab = tabFor(path);
   if (ROOT_TABS.includes(path)) store.lastTab = path;
@@ -222,6 +225,9 @@ function routeFromStartParam(p) {
   if ((m = p.match(/^s_(\d+)$/))) return `/service/${m[1]}`;
   if ((m = p.match(/^owner_(\d+)$/))) return `/owner/${m[1]}`;
   if ((m = p.match(/^admin_([a-z]+)$/))) return `/admin/${m[1]}`;
+  if ((m = p.match(/^admin_([a-z]+)_(\d+)$/))) return `/admin/${m[1]}/${m[2]}`;
+  if ((m = p.match(/^claim_(\d+-[A-Za-z0-9_-]+)$/))) return `/claim?token=${m[1]}`;
+  if ((m = p.match(/^claimsvc_(\d+)$/))) return `/claim?service=${m[1]}`;
   if ((m = p.match(/^deal_(\d+)$/))) return `/ads/deals/${m[1]}`;
   if ((m = p.match(/^ad_(\d+)$/))) return `/ads/${m[1]}`;
   if ((m = p.match(/^ads_my_(\d+)$/))) return `/ads/my/${m[1]}`;

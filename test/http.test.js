@@ -163,3 +163,28 @@ test('radar is public and the home screen carries its summary', async () => {
   const home = await call('/api/home');
   assert.equal(home.body.radar.networks.length, 5);
 });
+
+test('claiming a card over HTTP: invitation link → owner cabinet; others stay out', async () => {
+  const adminAuth = tma(1, 'Admin');
+  const created = await call('/api/admin/services', { method: 'POST', auth: adminAuth, body: {
+    name: 'Ничейный VPN', bot_url: '@nobody_vpn_bot', support_contact: '@claimer80', devices: 2, tariffs: { 1: 150 },
+    protocols: ['vless'], countries: ['nl'], platforms: ['ios'], payments: ['sbp']
+  } });
+  const id = created.body.id;
+  invalidate();
+  const card = await call(`/api/services/${id}`);
+  assert.equal(card.body.claim_status, 'unclaimed');
+  assert.equal(card.body.added_by, 'admin');
+  // The username hint shows the card to its likely owner.
+  assert.deepEqual((await call('/api/me/services', { auth: tma(80, 'Claimer') })).body.suggestions.map((s) => s.id), []); // no username in this initData
+  const { body: link } = await call(`/api/admin/services/${id}/claim-link`, { method: 'POST', auth: adminAuth });
+  const token = link.link.split('startapp=claim_')[1];
+  assert.equal((await call(`/api/owner/services/${id}`, { auth: tma(80) })).status, 403);
+  assert.equal((await call(`/api/claims/link/${token}`, { auth: tma(80) })).body.service.name, 'Ничейный VPN');
+  const claimed = await call('/api/claims', { method: 'POST', auth: tma(80, 'Claimer'), body: { token } });
+  assert.equal(claimed.body.status, 'approved');
+  assert.equal((await call(`/api/owner/services/${id}`, { auth: tma(80) })).status, 200);
+  assert.equal((await call(`/api/owner/services/${id}`, { auth: tma(81) })).status, 403);
+  assert.equal((await call('/api/me/services', { auth: tma(80) })).body.services[0].id, id);
+  assert.equal((await call('/api/claims', { method: 'POST', auth: tma(81), body: { token } })).status, 400);
+});

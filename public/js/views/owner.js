@@ -173,7 +173,7 @@ export function editorHTML(d) {
       </div>
       <label class="field"><span>Поддержка</span><input class="input" name="support_contact" maxlength="120" value="${esc(d.support_contact || '')}" placeholder="@support"></label>
 
-      <section><p class="label">Тарифы — полная цена за период, ₽</p>
+      <section id="tariffsSec"><p class="label">Тарифы — полная цена за период, ₽</p>
         <div class="grid4">${TARIFF_MONTHS.map((m) => `
           <label class="field"><span>${monthsWord(m)}</span><input class="input" type="number" inputmode="numeric" min="1" data-tariff="${m}" value="${d.tariffs?.[m] ?? ''}" placeholder="—">
           <span class="small muted" data-per="${m}" style="padding:0 6px"></span></label>`).join('')}</div>
@@ -420,12 +420,13 @@ async function drawStats(box, service) {
 }
 
 /* ---------------- Service dashboard ---------------- */
-export async function ownerService(root, { params, navigate }) {
+export async function ownerService(root, { params, navigate, query = {} }) {
   const id = Number(params.id);
   const data = await get(`/api/owner/services/${id}`);
   const s = data.service;
   const rev = data.revision;
-  let tab = 'card';
+  // Deep links from the home block: ?tab=promos|stats, ?focus=tariffs.
+  let tab = ['card', 'promos', 'stats'].includes(query.tab) ? query.tab : 'card';
   let stopStats = null;
 
   const statusBox = () => {
@@ -482,5 +483,6 @@ export async function ownerService(root, { params, navigate }) {
   if (s.status === 'published') drawHealth($('#healthBox', root), id).catch(() => { $('#healthBox', root).remove(); });
   bindSeg($('#tabs .seg', root), (v) => { tab = v; drawTab(); });
   await drawTab();
+  if (query.focus === 'tariffs') requestAnimationFrame(() => $('#tariffsSec', root)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   return () => stopStats?.();
 }

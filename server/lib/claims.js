@@ -230,7 +230,7 @@ export function requestManual(db, user, claimId, note, { envAdmins = [] } = {}) 
   const text = typeof note === 'string' ? note.trim().slice(0, 500) || null : null;
   const svc = serviceRow(db, c.service_id);
   db.tx(() => {
-    db.run("UPDATE service_claims SET status = 'manual', note = ? WHERE id = ?", text, c.id);
+    db.run("UPDATE service_claims SET status = 'manual', method = 'manual', note = ? WHERE id = ?", text, c.id);
     notifyAdmins(db, envAdmins, `🙋 Заявка на подтверждение «${html(svc.name)}» от ${html(userLabel(db, user.id))}.${text ? `\n\n«${html(text)}»` : ''}`,
       `admin_services_${svc.id}`, 'Открыть карточку');
     enqueue(db, user.id, 'moderation', `📨 Заявка на «${html(svc.name)}» у администратора. Он свяжется с вами, если понадобятся подробности, — ответ придёт сюда.`, `claimsvc_${svc.id}`, 'Открыть заявку');
@@ -240,7 +240,8 @@ export function requestManual(db, user, claimId, note, { envAdmins = [] } = {}) 
 export function decideClaim(db, admin, claimId, approve, reason = null, { envAdmins = [] } = {}) {
   const c = claimRow(db, claimId);
   if (!ACTIVE.includes(c.status)) throw new HttpError(409, 'Заявка уже закрыта', 'conflict');
-  if (approve) return approveClaim(db, c.id, { method: c.method === 'code' ? 'manual' : c.method, adminId: admin.id, envAdmins });
+  // An admin's decision is a manual proof, whatever the person tried before.
+  if (approve) return approveClaim(db, c.id, { method: c.method === 'link' ? 'link' : 'manual', adminId: admin.id, envAdmins });
   const why = typeof reason === 'string' ? reason.trim().slice(0, 300) : '';
   if (why.length < 3) throw badRequest('Укажите причину');
   const svc = serviceRow(db, c.service_id);

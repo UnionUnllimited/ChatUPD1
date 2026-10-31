@@ -115,7 +115,7 @@ test('manual: an admin approves in one click or rejects with a reason', () => {
   assert.throws(() => decideClaim(db, admin, id, false, ''), /причину/);
   decideClaim(db, admin, id, true);
   assert.equal(service().owner_id, 40);
-  assert.equal(db.get('SELECT decided_by, method FROM service_claims WHERE id = ?', id).decided_by, 1);
+  assert.deepEqual({ ...db.get('SELECT decided_by, method FROM service_claims WHERE id = ?', id) }, { decided_by: 1, method: 'manual' });
   // Rejection path on another card.
   const s2 = createService(db, admin, validateCard({ name: 'Третий', bot_url: '@third_vpn_bot', devices: 1, tariffs: { 1: 100 }, protocols: ['vless'], countries: ['nl'], platforms: ['ios'], payments: ['sbp'] }), {});
   const w = user(41);
@@ -182,4 +182,13 @@ test('import: CSV with Russian headers and names, JSON, dry run, row errors', ()
   assert.match(importServices(db, admin, csv, {}).errors[0].error, /уже есть/);
   const json = JSON.stringify([{ name: 'Дельта', bot: '@delta_vpn_bot', tariffs: { 3: 450 }, protocols: ['trojan'], countries: ['se'], platforms: ['android'], payments: ['crypto'], devices: 2 }]);
   assert.equal(importServices(db, admin, json, {}).created.length, 1);
+});
+
+test('bot update: making the bot an admin of the card\'s channel settles the claim', async () => {
+  const { createBot } = await import('../server/lib/bot.js');
+  const u = user(90);
+  startClaim(db, u, svc, env);
+  const bot = createBot({ botToken: '', adminIds: [1], webAppUrl: '' }, { warn() {}, info() {}, error() {} });
+  await bot.handleUpdate(db, { my_chat_member: { chat: { id: -1009, type: 'channel', username: 'veter_vpn', title: 'Ветер' }, from: { id: 90 }, new_chat_member: { status: 'administrator' } } });
+  assert.equal(service().owner_id, 90);
 });

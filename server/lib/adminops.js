@@ -138,6 +138,8 @@ export function purgeDemo(db, admin) {
       db.run(`DELETE FROM ${table} WHERE ${table === 'ad_reviews' ? 'buyer_id' : 'user_id'} >= ?`, DEMO_USER_MIN);
     }
     db.run('DELETE FROM status_disputes WHERE owner_id >= ?', DEMO_USER_MIN);
+    db.run('DELETE FROM claim_checks WHERE user_id >= ?', DEMO_USER_MIN);
+    db.run('DELETE FROM service_claims WHERE user_id >= ? OR decided_by >= ?', DEMO_USER_MIN, DEMO_USER_MIN);
     for (const table of ['reviews', 'clicks', 'favorites', 'user_roles', 'user_notify', 'applications', 'service_revisions', 'notifications']) {
       const col = table === 'service_revisions' ? 'author_id' : 'user_id';
       db.run(`DELETE FROM ${table} WHERE ${col} >= ?`, DEMO_USER_MIN);

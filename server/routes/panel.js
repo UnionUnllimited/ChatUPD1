@@ -109,6 +109,8 @@ export function panelRoutes(r, { db, config }) {
     return {
       items: db.all(
         `SELECT s.id, s.name, s.logo_url, s.status, s.hidden, s.hidden_reason, s.min_monthly, s.base_monthly, s.owner_id, s.published_at, s.updated_at, s.bot_url,
+           s.added_by, s.claim_status, s.data_checked_at,
+           (SELECT COUNT(*) FROM service_claims c WHERE c.service_id = s.id AND c.status IN ('manual', 'dispute')) claims_waiting,
            u.username owner_username, u.first_name owner_name,
            (SELECT ROUND(AVG(rating), 1) FROM reviews r WHERE r.service_id = s.id AND r.status = 'approved') rating,
            (SELECT COUNT(*) FROM reviews r WHERE r.service_id = s.id AND r.status = 'approved') reviews,
@@ -132,7 +134,11 @@ export function panelRoutes(r, { db, config }) {
     for (let i = 29; i >= 0; i--) { const day = mskDay(now() - i * DAY); daily.push(rows.get(day) || { day, impressions: 0, views: 0, clicks: 0 }); }
     return {
       service: { id: s.id, name: s.name, status: s.status, hidden: Boolean(s.hidden), hidden_reason: s.hidden_reason, logo_url: s.logo_url,
-        min_monthly: s.min_monthly, published_at: s.published_at, updated_at: s.updated_at, created_at: s.created_at },
+        min_monthly: s.min_monthly, published_at: s.published_at, updated_at: s.updated_at, created_at: s.created_at,
+        added_by: s.added_by, claim_status: s.claim_status, data_checked_at: s.data_checked_at },
+      claims: db.all(
+        `SELECT c.id, c.status, c.method, c.note, c.created_at, c.decided_at, c.expires_at, c.user_id, u.username, u.first_name
+         FROM service_claims c LEFT JOIN users u ON u.id = c.user_id WHERE c.service_id = ? AND c.status != 'superseded' ORDER BY c.id DESC LIMIT 20`, id),
       card: rowToCard(s, tariffsOf(db, id)),
       owner: s.owner_id ? db.get('SELECT id, username, first_name, last_name FROM users WHERE id = ?', s.owner_id) : null,
       daily,

@@ -11,6 +11,7 @@ import { adminRoutes } from './routes/admin.js';
 import { panelRoutes } from './routes/panel.js';
 import { healthRoutes } from './routes/health.js';
 import { adsRoutes } from './routes/ads.js';
+import { claimRoutes } from './routes/claims.js';
 
 const PUBLIC_DIR = resolve(ROOT, 'public');
 const MAX_BODY = 1024 * 1024;
@@ -117,6 +118,7 @@ export function createApp({ db, config, bot, log = console }) {
   panelRoutes(router, deps);
   healthRoutes(router, deps);
   adsRoutes(router, deps);
+  claimRoutes(router, deps);
   router.get('/api/health', () => ({ ok: true }));
 
   async function handleWebhook(req, res) {

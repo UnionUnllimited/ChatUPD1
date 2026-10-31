@@ -147,7 +147,44 @@ function serviceTags(s) {
   return out.join(' ');
 }
 
-export async function services(root) {
+// «Владелец: нет / ожидает / подтверждён».
+const ownerCell = (s) => (s.owner_id
+  ? `${who({ username: s.owner_username, first_name: s.owner_name, id: s.owner_id })}<br>${tag('подтверждён', 'good')}`
+  : s.claims_waiting ? tag('ждёт решения', 'warn') : s.claim_status === 'pending' ? tag('ожидает', 'warn') : tag('нет'));
+
+// Bulk import (JSON or CSV): check first, then import; bad rows are listed with their line.
+function importSheet(onDone) {
+  const sample = 'Название;Бот;1;3;6;12;Протоколы;Страны;Устройства;Триал;Оплата;Платформы;Контакт;Дата сверки\nАльфа VPN;@alpha_vpn_bot;199;549;999;1790;VLESS Reality, WireGuard;Нидерланды, Германия;5;3;СБП, Карта РФ;iOS, Android;@alpha_support;2026-10-01';
+  openSheet('Импорт сервисов', `
+    <p class="note" style="font-size:14px;margin:0">CSV (разделитель «;» или «,») или JSON-массив. Колонки: название, бот, тарифы 1/3/6/12, протоколы, страны, устройства, триал (дней), оплата, платформы, контакт, дата сверки. Значения — названиями или кодами. Карточки появятся в каталоге с пометкой «Добавлено Линзой».</p>
+    <label class="field"><span>Файл</span><input class="input" type="file" id="impFile" accept=".csv,.json,text/csv,application/json"></label>
+    <label class="field"><span>Или вставьте текст</span><textarea class="input" id="impText" rows="8" style="font-family:ui-monospace,monospace;font-size:12.5px" placeholder="${esc(sample)}"></textarea></label>
+    <div id="impResult"></div>`, (sheet) => {
+    let checked = false;
+    $('#impFile', sheet).addEventListener('change', async (e) => {
+      const f = e.target.files[0];
+      if (f) { $('#impText', sheet).value = await f.text(); checked = false; setSheetMain({ text: 'Проверить', onClick: run }); }
+    });
+    $('#impText', sheet).addEventListener('input', () => { checked = false; setSheetMain({ text: 'Проверить', onClick: run }); });
+    const run = async () => {
+      const text = $('#impText', sheet).value;
+      try {
+        const r = await post('/api/admin/services/import', { text, dry_run: !checked });
+        $('#impResult', sheet).innerHTML = `
+          <div class="card panel stack-sm">
+            <b>${checked ? `Импортировано: ${r.created.length} из ${r.total}` : `Готово к импорту: ${r.ok.length} из ${r.total}`}</b>
+            ${r.errors.length ? `<div class="stack-sm">${r.errors.map((x) => `<span class="small" style="color:var(--bad)">Строка ${x.line} · ${esc(x.name)}: ${esc(x.error)}</span>`).join('')}</div>` : ''}
+          </div>`;
+        if (checked) { haptic.notify('success'); toast(`Импортировано: ${r.created.length}`); closeSheet(true); onDone(); return; }
+        checked = r.ok.length > 0;
+        setSheetMain(checked ? { text: `Импортировать ${r.ok.length}`, onClick: run } : { text: 'Проверить', onClick: run });
+      } catch (e) { toastError(e); }
+    };
+    setSheetMain({ text: 'Проверить', onClick: run });
+  });
+}
+
+export async function services(root, { refresh }) {
   const { items } = await get('/api/admin/services');
   let filter = 'all';
   let q = '';
@@ -156,10 +193,12 @@ export async function services(root) {
     ['published', `В каталоге <span class="n">${items.filter((s) => s.status === 'published' && !s.hidden).length}</span>`],
     ['draft', `Черновики <span class="n">${items.filter((s) => s.status === 'draft').length}</span>`],
     ['hidden', `Скрытые <span class="n">${items.filter((s) => s.hidden).length}</span>`],
-    ['pending', `Ждут модерации <span class="n">${items.filter((s) => s.pending).length}</span>`]
+    ['pending', `Ждут модерации <span class="n">${items.filter((s) => s.pending).length}</span>`],
+    ['unclaimed', `Без владельца <span class="n">${items.filter((s) => !s.owner_id).length}</span>`],
+    ['claims', `Ждут подтверждения <span class="n">${items.filter((s) => s.claims_waiting).length}</span>`]
   ];
   root.innerHTML = `
-    ${head('Сервисы', `${exportButton('services')}<a class="solid btn sm press" href="#/admin/services/new">${icon.plus} Добавить сервис</a>`)}
+    ${head('Сервисы', `${exportButton('services')}<button type="button" class="fill btn sm press" id="import">Импорт</button><a class="solid btn sm press" href="#/admin/services/new">${icon.plus} Добавить сервис</a>`)}
     <div class="toolbar">
       <form class="lg search" id="sSearch" role="search">${icon.search}<input type="search" placeholder="Название или бот" aria-label="Поиск сервиса" autocomplete="off"></form>
       <div id="sFilters">${chips(FILTERS, filter, 'data-f')}</div>
@@ -170,6 +209,8 @@ export async function services(root) {
     if (filter === 'draft' && s.status !== 'draft') return false;
     if (filter === 'hidden' && !s.hidden) return false;
     if (filter === 'pending' && !s.pending) return false;
+    if (filter === 'unclaimed' && s.owner_id) return false;
+    if (filter === 'claims' && !s.claims_waiting) return false;
     const needle = q.toLocaleLowerCase('ru');
     return !needle || s.name.toLocaleLowerCase('ru').includes(needle) || s.bot_url.toLowerCase().includes(needle);
   });
@@ -180,7 +221,7 @@ export async function services(root) {
     columns: [
       { key: 'name', title: 'Сервис', render: (s) => `<span class="cell-main">${logoHTML(s, 'sm')}<span><b>${esc(s.name)}</b><small>${esc(s.bot_url.replace('https://t.me/', '@'))}</small></span></span>` },
       { key: 'status', title: 'Статус', value: (s) => (s.hidden ? 2 : s.status === 'published' ? 0 : 1), render: serviceTags },
-      { key: 'owner_username', title: 'Владелец', value: (s) => s.owner_username || s.owner_name || '', render: (s) => (s.owner_id ? who({ username: s.owner_username, first_name: s.owner_name, id: s.owner_id }) : '<span class="muted">—</span>') },
+      { key: 'owner_username', title: 'Владелец', value: (s) => (s.owner_id ? 2 : s.claim_status === 'pending' ? 1 : 0), render: ownerCell },
       { key: 'min_monthly', title: 'От ₽/мес', num: true, render: (s) => (s.min_monthly ? rub(s.min_monthly) : '—') },
       { key: 'rating', title: 'Рейтинг', num: true, render: (s) => (s.rating ? `★ ${String(s.rating).replace('.', ',')} <span class="muted">(${s.reviews})</span>` : '—') },
       { key: 'clients30', title: 'Клиенты 30 дн', num: true, render: (s) => fmt(s.clients30) },
@@ -188,6 +229,7 @@ export async function services(root) {
       { key: 'last_check', title: 'Проверка', num: true, render: (s) => (s.last_check ? `<span style="color:${s.last_passed ? 'var(--good)' : 'var(--bad)'}">${s.last_passed ? '✓' : '✕'}</span> ${dateShort(s.last_check)}` : '<span class="muted">нет</span>') }
     ]
   });
+  $('#import', root).addEventListener('click', () => importSheet(refresh));
   let t;
   $('#sSearch input', root).addEventListener('input', (e) => { clearTimeout(t); t = setTimeout(() => { q = e.target.value.trim(); table.update(pick()); }, 150); });
   $('#sSearch', root).addEventListener('submit', (e) => e.preventDefault());
@@ -261,6 +303,7 @@ export async function serviceNew(root, { navigate }) {
 
 export async function serviceDetail(root, { params, navigate, refresh }) {
   const id = Number(params.id);
+  const claimsAc = new AbortController();
   const d = await get(`/api/admin/services/${id}`);
   const s = d.service;
   const clicks30 = d.daily.reduce((n, x) => n + x.clicks, 0);
@@ -291,8 +334,8 @@ export async function serviceDetail(root, { params, navigate, refresh }) {
       <section class="stack">
         <h2 class="section-title" style="margin:0">Управление</h2>
         <div class="card group">
-          <div class="row"><span style="display:flex;flex-direction:column"><span>Владелец</span><span class="small muted">${d.owner ? `${who(d.owner)} · ${d.owner.id}` : 'не назначен'}</span></span>
-            <span class="row-flex">${d.owner ? `<a class="link-btn" href="#/admin/users/${d.owner.id}">Профиль</a>` : ''}<button type="button" class="fill btn sm press" id="owner">${d.owner ? 'Сменить' : 'Назначить'}</button></span></div>
+          <div class="row"><span style="display:flex;flex-direction:column"><span>Владелец</span><span class="small muted">${d.owner ? `${who(d.owner)} · ${d.owner.id} · подтверждён` : s.added_by === 'admin' ? `нет · добавлено Линзой${s.data_checked_at ? `, данные на ${dateShort(s.data_checked_at)}` : ''}` : 'не назначен'}</span></span>
+            <span class="row-flex">${d.owner ? `<a class="link-btn" href="#/admin/users/${d.owner.id}">Профиль</a>` : '<button type="button" class="lgb btn sm press" id="claimLink">Ссылка для владельца</button>'}<button type="button" class="fill btn sm press" id="owner">${d.owner ? 'Сменить' : 'Назначить'}</button></span></div>
           <div class="row"><span style="display:flex;flex-direction:column"><span>Ручная проверка</span><span class="small muted">${d.checks[0] ? `${d.checks[0].passed ? '✓ работает' : '✕ не работает'} · ${dateShort(d.checks[0].checked_at)}` : 'ещё не было'}</span></span>
             <span class="row-flex"><button type="button" class="fill btn sm press danger" id="fail">✕</button><button type="button" class="lgb btn sm press" id="pass">✓ Работает</button></span></div>
           <div class="row"><span style="display:flex;flex-direction:column"><span>Видимость в каталоге</span><span class="small muted">${s.hidden ? `скрыт: ${esc(s.hidden_reason || '')}` : visible ? 'виден клиентам' : 'черновик — ещё не опубликован'}</span></span>
@@ -307,12 +350,49 @@ export async function serviceDetail(root, { params, navigate, refresh }) {
       </section>
       <section><h2 class="section-title">Карточка</h2><div class="card panel">${cardKV(d.card)}</div></section>
     </div>
+    ${d.claims.length ? '<section><h2 class="section-title">Заявки на карточку</h2><div id="tClaims"></div></section>' : ''}
     <section><h2 class="section-title">Статус по сигналам клиентов</h2><div id="healthSec"></div></section>
     <div class="grid-2">
       <section><h2 class="section-title">История проверок</h2><div id="tChecks"></div></section>
       <section class="stack"><div><h2 class="section-title">Версии карточки</h2><div id="tRevs"></div></div><div><h2 class="section-title">Акции</h2><div id="tPromos"></div></div></section>
     </div>`;
 
+  const CLAIM = { invited: ['ссылка отправлена', 'neutral'], pending: ['проверяет', 'warn'], manual: ['просит подтвердить', 'warn'], dispute: ['спор о владении', 'bad'],
+    approved: ['подтверждён', 'good'], rejected: ['отклонён', 'neutral'], expired: ['истекла', 'neutral'] };
+  const METHOD = { link: 'ссылка-приглашение', code: 'код в профиле бота', channel: 'канал сервиса', manual: 'вручную' };
+  if (d.claims.length) dataTable($('#tClaims', root), {
+    rows: d.claims, columns: [
+      { key: 'created_at', title: 'Когда', cls: 'nowrap', render: (c) => dateTime(c.created_at) },
+      { key: 'user_id', title: 'Кто', render: (c) => (c.user_id ? `<a href="#/admin/users/${c.user_id}">${who({ username: c.username, first_name: c.first_name, id: c.user_id })}</a>` : '<span class="muted">ещё не открыта</span>') },
+      { key: 'status', title: 'Статус', render: (c) => tag(...(CLAIM[c.status] || [c.status, 'neutral'])) },
+      { key: 'method', title: 'Способ', render: (c) => esc(METHOD[c.method] || c.method) },
+      { key: 'note', title: 'Комментарий', cls: 'text', render: (c) => esc(c.note || '') },
+      { key: 'act', title: '', sortable: false, render: (c) => (['manual', 'dispute', 'pending'].includes(c.status)
+        ? `<span class="row-flex" style="justify-content:flex-end;flex-wrap:nowrap;gap:6px"><button type="button" class="fill btn sm press" data-claim-reject="${c.id}">Отклонить</button><button type="button" class="lgb btn sm press" data-claim-approve="${c.id}">Подтвердить</button></span>` : '') }
+    ]
+  });
+  root.addEventListener('click', async (e) => {
+    const ok = e.target.closest('[data-claim-approve]');
+    const no = e.target.closest('[data-claim-reject]');
+    if (ok && (await confirmDialog('Подтвердить владельца? Карточка перейдёт к нему, он получит доступ к кабинету.'))) {
+      if (await act(() => post(`/api/admin/claims/${ok.dataset.claimApprove}/approve`), 'Владелец подтверждён')) refresh();
+    }
+    if (no) {
+      const reason = await reasonSheet('Отклонить заявку', 'Причину увидит заявитель');
+      if (reason && (await act(() => post(`/api/admin/claims/${no.dataset.claimReject}/reject`, { reason }), 'Заявка отклонена'))) refresh();
+    }
+  }, { signal: claimsAc.signal });
+  $('#claimLink', root)?.addEventListener('click', async () => {
+    try {
+      const r = await post(`/api/admin/services/${id}/claim-link`);
+      const copied = await navigator.clipboard?.writeText(r.link).then(() => true, () => false);
+      openSheet('Ссылка для владельца', `
+        <p class="note" style="font-size:14px;margin:0">Одноразовая, действует до ${dateShort(r.expires_at)}. По ней владелец сразу откроет экран подтверждения «${esc(s.name)}» и заберёт карточку одним нажатием. Отправляйте только самому владельцу; новая ссылка отменяет прежнюю.</p>
+        <textarea class="input" readonly rows="3" id="claimLinkText" style="font-family:ui-monospace,monospace;font-size:13px">${esc(r.link)}</textarea>
+        <span class="small muted">${copied ? 'Ссылка скопирована в буфер обмена.' : 'Скопируйте ссылку вручную.'}</span>`,
+      (sheet) => $('#claimLinkText', sheet).addEventListener('focus', (ev) => ev.target.select()));
+    } catch (err) { toastError(err); }
+  });
   dataTable($('#tChecks', root), {
     rows: d.checks, empty: 'Проверок ещё не было', columns: [
       { key: 'checked_at', title: 'Когда', render: (c) => dateTime(c.checked_at), cls: 'nowrap' },
@@ -392,7 +472,7 @@ export async function serviceDetail(root, { params, navigate, refresh }) {
     ['#chClicks', d.daily, 'clicks', ['переход', 'перехода', 'переходов']],
     ['#chImp', d.daily, 'impressions', ['показ', 'показа', 'показов']]
   ]);
-  return () => { stopVotes(); stopCharts(); };
+  return () => { stopVotes(); stopCharts(); claimsAc.abort(); };
 }
 
 /* ---------------- Users ---------------- */
