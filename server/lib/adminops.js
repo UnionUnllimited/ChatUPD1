@@ -6,15 +6,19 @@ import { applyCard, audit, html } from './moderation.js';
 import { recomputeMarketAverage, rowToCard, tariffsOf, invalidate } from './catalog.js';
 import { enqueue, notifyFavorites } from './notify.js';
 import { grantRole, loadUser } from '../auth.js';
+import { refreshClaimStatus } from './claims.js';
 
 const rub = (n) => `${n.toLocaleString('ru-RU')} ₽`;
 const eq = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
-// Admins can publish cards themselves, e.g. to seed the catalog before owners join.
-export function createService(db, admin, card, { uploadsDir }) {
+// Admins can publish cards themselves, e.g. to seed the catalog before owners join. Such a card
+// is marked «Добавлено Линзой» with the date its data was checked, until the owner claims it.
+export function createService(db, admin, card, { uploadsDir, checkedAt = null }) {
   return db.tx(() => {
     if (db.get("SELECT id FROM services WHERE bot_url = ? AND status = 'published'", card.bot_url)) throw badRequest('Сервис с этим ботом уже есть в каталоге');
-    const r = db.run('INSERT INTO services (owner_id, name, bot_url, created_at) VALUES (NULL, ?, ?, ?)', card.name, card.bot_url, now());
+    const ts = now();
+    const r = db.run("INSERT INTO services (owner_id, name, bot_url, added_by, claim_status, data_checked_at, created_at) VALUES (NULL, ?, ?, 'admin', 'unclaimed', ?, ?)",
+      card.name, card.bot_url, checkedAt || ts, ts);
     const id = Number(r.lastInsertRowid);
     applyCard(db, id, card, { uploadsDir });
     recomputeMarketAverage(db);
@@ -30,6 +34,8 @@ export function editService(db, admin, id, card, { uploadsDir }) {
     if (!before) throw notFound('Сервис не найден');
     const prev = before.status === 'published' ? rowToCard(before, tariffsOf(db, id)) : null;
     const { min } = applyCard(db, id, card, { uploadsDir });
+    // An admin edit of an unclaimed card is a fresh check of its data.
+    if (!before.owner_id) db.run('UPDATE services SET data_checked_at = ? WHERE id = ?', now(), id);
     recomputeMarketAverage(db);
     const changed = prev ? Object.keys(card).filter((k) => !eq(prev[k], card[k])) : Object.keys(card);
     audit(db, admin.id, 'service.edit', 'service', id, { name: card.name, changed });
@@ -47,12 +53,14 @@ export function assignOwner(db, admin, id, userId) {
     if (!svc) throw notFound('Сервис не найден');
     if (userId === null) {
       db.run('UPDATE services SET owner_id = NULL WHERE id = ?', id);
+      refreshClaimStatus(db, id);
       audit(db, admin.id, 'service.owner', 'service', id, { name: svc.name, from: svc.owner_id, to: null });
       return;
     }
     if (!db.get('SELECT 1 FROM users WHERE id = ?', userId)) throw badRequest('Пользователь ещё не открывал Линзу — попросите его зайти в приложение');
-    db.run('UPDATE services SET owner_id = ? WHERE id = ?', userId, id);
+    db.run("UPDATE services SET owner_id = ?, claim_status = 'claimed' WHERE id = ?", userId, id);
     grantRole(db, userId, 'vpn_owner');
+    db.run("UPDATE service_claims SET status = 'superseded', decided_at = ? WHERE service_id = ? AND status IN ('invited', 'pending', 'manual', 'dispute')", now(), id);
     audit(db, admin.id, 'service.owner', 'service', id, { name: svc.name, from: svc.owner_id, to: userId });
     enqueue(db, userId, 'moderation', `🔑 Вам передан кабинет сервиса «${html(svc.name)}» в Линзе. Изменения карточки публикуются после модерации.`, `owner_${id}`);
   });

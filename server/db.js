@@ -391,6 +391,34 @@ CREATE TABLE IF NOT EXISTS ad_favorites (
   PRIMARY KEY (user_id, channel_id)
 );
 
+-- «Забрать свою карточку»: cards Линза added itself are claimed by their real owners.
+CREATE TABLE IF NOT EXISTS service_claims (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id),     -- NULL for an invitation link nobody has opened yet
+  method TEXT NOT NULL,                     -- link | code | channel | manual: how ownership is (being) proven
+  code TEXT,                                -- LINZA-XXXXXX for the bot profile check
+  token_hash TEXT,                          -- invitation links: sha256 of the secret, never the secret itself
+  status TEXT NOT NULL,                     -- invited | pending | manual | dispute | approved | rejected | expired | superseded
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER,
+  decided_at INTEGER,
+  decided_by INTEGER REFERENCES users(id),  -- NULL when proven automatically
+  note TEXT
+);
+CREATE INDEX IF NOT EXISTS service_claims_service ON service_claims(service_id, status);
+CREATE INDEX IF NOT EXISTS service_claims_user ON service_claims(user_id, status);
+
+-- Bot profile checks, for the per-user hourly limit and the per-claim cooldown.
+CREATE TABLE IF NOT EXISTS claim_checks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  claim_id INTEGER NOT NULL REFERENCES service_claims(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  found INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS claim_checks_user ON claim_checks(user_id, created_at);
+
 -- Reserved for the services market (v2+): hosting, jobs, ready solutions.
 CREATE TABLE IF NOT EXISTS market_listings (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -455,12 +483,21 @@ const COLUMNS = [
   ['services', 'fill_reminded_at', 'INTEGER'],
   ['ad_channels', 'verify_reminded_at', 'INTEGER'],
   ['ad_deals', 'seller_reminded_at', 'INTEGER'],
-  ['ad_deals', 'day_reminded_at', 'INTEGER']
+  ['ad_deals', 'day_reminded_at', 'INTEGER'],
+  // Cards Линза added itself and their path to an owner. The backfill runs once, when the column appears.
+  ['services', 'added_by', "TEXT NOT NULL DEFAULT 'owner'", "UPDATE services SET added_by = 'admin' WHERE owner_id IS NULL"],
+  ['services', 'claim_status', "TEXT NOT NULL DEFAULT 'claimed'",
+    `UPDATE services SET claim_status = 'unclaimed' WHERE owner_id IS NULL;
+     UPDATE users SET active_role = 'vpn_owner' WHERE active_role = 'client' AND id IN (SELECT owner_id FROM services WHERE owner_id IS NOT NULL)`],
+  ['services', 'data_checked_at', 'INTEGER', "UPDATE services SET data_checked_at = COALESCE(updated_at, created_at) WHERE added_by = 'admin'"]
 ];
 function migrate(raw) {
-  for (const [table, column, ddl] of COLUMNS) {
+  for (const [table, column, ddl, backfill] of COLUMNS) {
     const has = raw.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
-    if (!has) raw.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+    if (!has) {
+      raw.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+      if (backfill) raw.exec(backfill);
+    }
   }
 }
 
